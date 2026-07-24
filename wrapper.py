@@ -9,15 +9,14 @@ import shlex
 def translate_string(input_str):
     """Utility to translate between Punycode and real text using the script's logic"""
     try:
-        import runpy
-        # We need to call the internal punyencode/decode_string functions
-        # The easiest way without refactoring is to use the 'str' command logic
         old_stdout = sys.stdout
         sys.stdout = io.StringIO()
         
-        # dumper-companion.py is already in the path
+        # In Pyodide we use absolute paths for consistency
+        script_path = '/home/pyodide/dumper-companion.py'
+        
         sys.argv = ['dumper-companion.py', 'str', input_str]
-        runpy.run_path('dumper-companion.py', run_name='__main__')
+        runpy.run_path(script_path, run_name='__main__')
         
         result = sys.stdout.getvalue().strip()
         sys.stdout = old_stdout
@@ -32,42 +31,44 @@ def process_task_advanced(command, filename, extra_args_list):
     sys.stdout = sys.stderr = captured_output
 
     try:
-        base_dir = os.getcwd()
+        # Use absolute paths in Pyodide environment
+        base_dir = '/home/pyodide'
         script_path = os.path.join(base_dir, 'dumper-companion.py')
         output_dir = os.path.join(base_dir, 'virtual_out')
         
-        # 1. Clean environment
+        # 1. Clean and prepare output directory
         if os.path.exists(output_dir):
             shutil.rmtree(output_dir)
         os.makedirs(output_dir, exist_ok=True)
         
-        # 2. Locate script
+        # 2. Verify script existence
         if not os.path.exists(script_path):
-            possible_paths = ['/home/pyodide/dumper-companion.py', '/dumper-companion.py']
-            for p in possible_paths:
-                if os.path.exists(p):
-                    script_path = p
-                    break
+            print(f"!! CRITICAL: Script not found at {script_path}")
+            # Try to find it in the current dir as fallback
+            if os.path.exists('dumper-companion.py'):
+                script_path = os.path.abspath('dumper-companion.py')
+            else:
+                raise FileNotFoundError(f"dumper-companion.py not found in /home/pyodide or current directory.")
         
         # 3. Build Arguments
+        # sys.argv[0] is the script name, then command, then flags, then files
         args = ['dumper-companion.py', command]
         
-        for arg in extra_args_list:
-            if arg.startswith('--'):
-                args.extend(shlex.split(arg))
-            else:
-                args.append(arg)
+        # Add flags from UI (extra_args_list is a list of strings like ['--japanese', '--encoding', 'mac_roman'])
+        args.extend(extra_args_list)
 
-        # 4. Add Positional Arguments
+        # 4. Add Positional Arguments based on command
         if command in ['iso', 'createmacfonts']:
+            # For extraction: <cmd> <input_file> <output_dir>
             args.extend([filename, output_dir])
         elif command in ['probe', 'dir', 'str']:
+            # For inspection: <cmd> <input_file/dir>
             args.append(filename)
         
         sys.argv = args
         
-        print(f"Executing: {' '.join(sys.argv)}")
-        print("-" * 40)
+        print(f"Running Command: {' '.join(sys.argv)}")
+        print("-" * 50)
         
         # 5. Execute Ritual
         runpy.run_path(script_path, run_name='__main__')
