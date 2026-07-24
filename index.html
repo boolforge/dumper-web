@@ -1,217 +1,176 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScummVM Dumper Companion - Web GUI</title>
-    <!-- Tailwind para una GUI moderna al instante -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Pyodide para el runtime de Python -->
+    <title>Macintosh Dumper Web</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
-    <!-- JSZip para empaquetar la salida -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-</head>
-<body class="bg-gray-900 text-gray-100 min-h-screen p-8 font-sans">
-    <div class="max-w-4xl mx-auto space-y-6">
+    <style>
+        :root {
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --terminal-bg: #1e1e1e;
+            --terminal-text: #d4d4d4;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+        }
+        h1 { margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 1rem; }
+        .step { margin-bottom: 2rem; }
+        .step-title { font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .badge { background: var(--primary); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; }
         
-        <header class="border-b border-gray-700 pb-4">
-            <h1 class="text-3xl font-bold text-green-400">Dumper Companion Web</h1>
-            <p class="text-gray-400 text-sm mt-1">Ejecutando dumper-companion.py original vía WebAssembly</p>
-        </header>
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: #f9fafb;
+            transition: all 0.2s ease;
+        }
+        .upload-zone.active { border-color: var(--primary); background: #eff6ff; }
+        .upload-zone input[type="file"] { display: none; }
+        .upload-btn {
+            background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 500;
+        }
+        .upload-btn:disabled { background: var(--text-muted); cursor: not-allowed; }
+        
+        .terminal {
+            background: var(--terminal-bg);
+            color: var(--terminal-text);
+            font-family: 'Courier New', Courier, monospace;
+            padding: 1rem;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        .terminal .stdout { color: #d4d4d4; }
+        .terminal .stderr { color: #ef4444; }
+        .terminal .system { color: #10b981; font-weight: bold; }
+    </style>
+</head>
+<body>
 
-        <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Panel de Control -->
-            <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-                <h2 class="text-xl font-semibold mb-4">1. Carga de Archivos</h2>
-                <input type="file" id="fileInput" multiple class="block w-full text-sm text-gray-400
-                    file:mr-4 file:py-2 file:px-4 file:rounded file:border-0
-                    file:text-sm file:font-semibold file:bg-green-600 file:text-white
-                    hover:file:bg-green-500 cursor-pointer mb-4" />
-                
-                <h2 class="text-xl font-semibold mb-4 mt-6">2. Argumentos CLI</h2>
-                <p class="text-xs text-gray-400 mb-2">Los archivos subidos están en <code>/in/</code>. La salida debe ir a <code>/out/</code>.</p>
-                <input type="text" id="argsInput" value="extract /in/ /out/" 
-                    class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white font-mono text-sm mb-6 focus:outline-none focus:border-green-400">
-
-                <button id="runBtn" disabled
-                    class="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded transition-colors">
-                    Cargando Python Runtime...
-                </button>
-            </div>
-
-            <!-- Consola de Salida -->
-            <div class="bg-black p-4 rounded-lg shadow-lg flex flex-col h-96">
-                <h2 class="text-gray-400 text-sm font-semibold mb-2 uppercase tracking-wider">Terminal Output</h2>
-                <pre id="output" class="flex-1 overflow-y-auto text-green-400 font-mono text-xs whitespace-pre-wrap">Iniciando entorno...</pre>
-                <button id="downloadBtn" class="hidden mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded transition-colors">
-                    Descargar ZIP Generado
-                </button>
-            </div>
-        </main>
+<div class="container">
+    <h1>Macintosh Disk Image Extractor</h1>
+    
+    <div class="step">
+        <div class="step-title"><span class="badge">1</span> Environment Initialization</div>
+        <p style="font-size: 0.875rem; color: var(--text-muted);" id="status-text">Booting Python engine in your browser...</p>
     </div>
 
-    <script>
-        let pyodide;
-        const outputEl = document.getElementById('output');
-        const runBtn = document.getElementById('runBtn');
-        const fileInput = document.getElementById('fileInput');
-        const argsInput = document.getElementById('argsInput');
-        const downloadBtn = document.getElementById('downloadBtn');
+    <div class="step">
+        <div class="step-title"><span class="badge">2</span> Select Disk Image</div>
+        <div class="upload-zone" id="drop-zone">
+            <p>Upload a Macintosh <b>.dsk</b> or <b>.img</b> file.</p>
+            <input type="file" id="file-input" disabled />
+            <button class="upload-btn" id="upload-trigger" disabled>Select File</button>
+        </div>
+    </div>
 
-        function appendOutput(text, type) {
-            const outputDiv = document.getElementById('output');
-            if (outputDiv) {
-                outputDiv.innerHTML += `<span class="${type}">${text}</span>\n`;
-                outputDiv.scrollTop = outputDiv.scrollHeight;
-            } else {
-                console.log(`Pyodide [${type}]:`, text);
-            }
-        }
+    <div class="step">
+        <div class="step-title"><span class="badge">3</span> Processing Logs</div>
+        <div class="terminal" id="terminal"></div>
+    </div>
+</div>
 
-        async function main() {
-            try {
-                pyodide = await loadPyodide({
-                    stdout: (text) => appendOutput(text, 'stdout'),
-                    stderr: (text) => appendOutput(text, 'stderr'),
-                });
+<script>
+    let pyodide;
+    const terminal = document.getElementById('terminal');
+    const fileInput = document.getElementById('file-input');
+    const uploadTrigger = document.getElementById('upload-trigger');
+    const statusText = document.getElementById('status-text');
 
-                appendOutput("Loading Python dependencies...", "stdout");
-
-                await pyodide.loadPackage("micropip");
-                const micropip = pyodide.pyimport("micropip");
-                await micropip.install(['machfs', 'pycdlib']);
-
-                appendOutput("✅ Dependencies installed. Ready to process files.", "stdout");
-
-                appendOutput("Obteniendo dumper-companion.py del master...", "stdout");
-
-                // Fetch del script oficial en vivo
-                const response = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
-                const pythonCode = await response.text();
-
-                // Escribir el script en el sistema de archivos virtual
-                pyodide.FS.writeFile('/dumper-companion.py', pythonCode);
-
-                // Crear directorios de I/O
-                try { pyodide.FS.mkdir('/in'); } catch(e) {}
-                try { pyodide.FS.mkdir('/out'); } catch(e) {}
-
-                appendOutput("Sistema listo. Esperando archivos.", "stdout");
-                runBtn.textContent = "Ejecutar Dumper";
-                runBtn.disabled = false;
-
-            } catch (error) {
-                appendOutput(`[CRITICAL] Error de inicialización: ${error.message}`, "stderr");
-            }
-        }
-
-        async function handleFileUpload(file) {
-            const arrayBuffer = await file.arrayBuffer();
-            pyodide.FS.writeFile(file.name, new Uint8Array(arrayBuffer));
-
-            // Fetch and execute the wrapper script
-            const wrapperCode = await (await fetch('wrapper.py')).text();
-            await pyodide.runPythonAsync(wrapperCode);
-
-        // Call the Python function and capture guaranteed output
-        // We use 'iso' command, input file, and /out/ directory as default
-        const output = pyodide.runPython(`process_file('iso', '${file.name}', '/out/')`);
-        appendOutput(output, 'stdout');
+    function log(text, type = 'stdout') {
+        const span = document.createElement('span');
+        span.className = type;
+        span.textContent = text + '\n';
+        terminal.appendChild(span);
+        terminal.scrollTop = terminal.scrollHeight;
     }
 
-        runBtn.addEventListener('click', async () => {
-            const files = fileInput.files;
-            if (files.length === 0) {
-                appendOutput("[WARNING] No has seleccionado ningún archivo original.", "stderr");
-                return;
-            }
-
-            runBtn.disabled = true;
-            runBtn.textContent = "Procesando...";
-            downloadBtn.classList.add('hidden');
-            appendOutput("\n--- Nueva Ejecución ---", "stdout");
-
-            try {
-                // Limpiar I/O previo
-                cleanupFS('/in');
-                cleanupFS('/out');
-
-                // Montar archivos de entrada en MemFS y procesar vía wrapper
-                for (let file of files) {
-                    const arrayBuffer = await file.arrayBuffer();
-                    pyodide.FS.writeFile(`/in/${file.name}`, new Uint8Array(arrayBuffer));
-                    appendOutput(`Cargado en memoria: ${file.name}`, "stdout");
-                }
-
-                // Preparar argumentos
-                const args = argsInput.value.split(" ").filter(a => a.trim() !== "");
-
-                // Script puente de ejecución para evadir SystemExit(0)
-                const execWrapper = `
-import sys
-import runpy
-
-sys.argv = ['dumper-companion.py'] + ${JSON.stringify(args)}
-try:
-    runpy.run_path('/dumper-companion.py', run_name='__main__')
-except SystemExit as e:
-    if str(e) != '0' and str(e) != 'None':
-        print(f"Script finalizado con código: {e}")
-                `;
-
-                appendOutput(`Ejecutando: python dumper-companion.py ${args.join(" ")}`, "stdout");
-                await pyodide.runPythonAsync(execWrapper);
-
-                appendOutput("Ejecución completada. Comprobando archivos generados...", "stdout");
-                await prepareDownload();
-
-            } catch (error) {
-                appendOutput(`[ERROR] ${error.message}`, "stderr");
-            } finally {
-                runBtn.disabled = false;
-                runBtn.textContent = "Ejecutar Dumper";
-            }
-        });
-
-        function cleanupFS(path) {
-            try {
-                const nodes = pyodide.FS.readdir(path).filter(f => f !== '.' && f !== '..');
-                for (let node of nodes) {
-                    pyodide.FS.unlink(`${path}/${node}`);
-                }
-            } catch(e) {}
-        }
-
-        async function prepareDownload() {
-            const outFiles = pyodide.FS.readdir('/out').filter(f => f !== '.' && f !== '..');
-            if (outFiles.length === 0) {
-                appendOutput("[INFO] No se generó ningún archivo en /out/.", "stdout");
-                return;
-            }
-
-            const zip = new JSZip();
-            outFiles.forEach(file => {
-                const fileData = pyodide.FS.readFile(`/out/${file}`);
-                zip.file(file, fileData);
-                appendOutput(`Empaquetando: ${file}`, "stdout");
+    async function initEnvironment() {
+        try {
+            log("Initializing Pyodide...", "system");
+            pyodide = await loadPyodide({
+                stdout: (text) => log(text, 'stdout'),
+                stderr: (text) => log(text, 'stderr')
             });
 
-            const content = await zip.generateAsync({ type: "blob" });
-            const url = URL.createObjectURL(content);
-            
-            downloadBtn.onclick = () => {
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "dumper_output.zip";
-                a.click();
-            };
-            
-            downloadBtn.classList.remove('hidden');
-            appendOutput("¡Archivos listos para descargar!", "stdout");
-        }
+            log("Installing dependencies (machfs, pycdlib)...", "system");
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            await micropip.install(['machfs', 'pycdlib']);
 
-        // Iniciar
-        main();
-    </script>
+            log("Fetching dumper-companion.py...", "system");
+            const response = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
+            const pythonCode = await response.text();
+            pyodide.FS.writeFile('/dumper-companion.py', pythonCode);
+
+            log("✅ Environment ready. Waiting for file...", "system");
+            statusText.textContent = "Ready. Please upload a file below.";
+            statusText.style.color = "#10b981";
+            
+            fileInput.disabled = false;
+            uploadTrigger.disabled = false;
+        } catch (error) {
+            log(`Initialization failed: ${error}`, "stderr");
+            statusText.textContent = "Failed to boot environment.";
+            statusText.style.color = "#ef4444";
+        }
+    }
+
+    uploadTrigger.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        log(`\n--- Starting extraction for: ${file.name} ---`, "system");
+        
+        try {
+            // Write to Pyodide Virtual FS
+            const arrayBuffer = await file.arrayBuffer();
+            pyodide.FS.writeFile(file.name, new Uint8Array(arrayBuffer));
+            
+            // Load and execute wrapper
+            const wrapperCode = await (await fetch('wrapper.py')).text();
+            await pyodide.runPythonAsync(wrapperCode);
+            
+            // Run the wrapper abstraction
+            const output = pyodide.runPython(`process_file('${file.name}')`);
+            log(output, 'stdout');
+            log("✅ Extraction process completed.", "system");
+            
+        } catch (err) {
+            log(`Execution error: ${err}`, "stderr");
+        }
+    });
+
+    // Boot
+    initEnvironment();
+</script>
+
 </body>
 </html>
