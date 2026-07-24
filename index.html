@@ -42,7 +42,7 @@
             <!-- Consola de Salida -->
             <div class="bg-black p-4 rounded-lg shadow-lg flex flex-col h-96">
                 <h2 class="text-gray-400 text-sm font-semibold mb-2 uppercase tracking-wider">Terminal Output</h2>
-                <pre id="consoleOutput" class="flex-1 overflow-y-auto text-green-400 font-mono text-xs whitespace-pre-wrap">Iniciando entorno...</pre>
+                <pre id="output" class="flex-1 overflow-y-auto text-green-400 font-mono text-xs whitespace-pre-wrap">Iniciando entorno...</pre>
                 <button id="downloadBtn" class="hidden mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded transition-colors">
                     Descargar ZIP Generado
                 </button>
@@ -52,73 +52,99 @@
 
     <script>
         let pyodide;
-        const consoleEl = document.getElementById('consoleOutput');
+        const outputEl = document.getElementById('output');
         const runBtn = document.getElementById('runBtn');
         const fileInput = document.getElementById('fileInput');
         const argsInput = document.getElementById('argsInput');
         const downloadBtn = document.getElementById('downloadBtn');
 
-        function log(msg) {
-            consoleEl.textContent += `\n${msg}`;
-            consoleEl.scrollTop = consoleEl.scrollHeight;
+        function appendOutput(text, type) {
+            const outputDiv = document.getElementById('output');
+            if (outputDiv) {
+                outputDiv.innerHTML += `<span class="${type}">${text}</span>\n`;
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            } else {
+                console.log(`Pyodide [${type}]:`, text);
+            }
         }
 
-        async function init() {
+        async function main() {
             try {
                 pyodide = await loadPyodide({
-                    stdout: (text) => log(text),
-                    stderr: (text) => log(`[ERROR] ${text}`)
+                    stdout: (text) => appendOutput(text, 'stdout'),
+                    stderr: (text) => appendOutput(text, 'stderr'),
                 });
-                
-                log("Entorno Python cargado. Obteniendo dumper-companion.py del master...");
-                
+
+                appendOutput("Loading Python dependencies...", "stdout");
+
+                await pyodide.loadPackage("micropip");
+                const micropip = pyodide.pyimport("micropip");
+                await micropip.install(['machfs', 'pycdlib']);
+
+                appendOutput("✅ Dependencies installed. Ready to process files.", "stdout");
+
+                appendOutput("Obteniendo dumper-companion.py del master...", "stdout");
+
                 // Fetch del script oficial en vivo
                 const response = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
                 const pythonCode = await response.text();
-                
+
                 // Escribir el script en el sistema de archivos virtual
                 pyodide.FS.writeFile('/dumper-companion.py', pythonCode);
-                
+
                 // Crear directorios de I/O
-                pyodide.FS.mkdir('/in');
-                pyodide.FS.mkdir('/out');
-                
-                log("Sistema listo. Esperando archivos.");
+                try { pyodide.FS.mkdir('/in'); } catch(e) {}
+                try { pyodide.FS.mkdir('/out'); } catch(e) {}
+
+                appendOutput("Sistema listo. Esperando archivos.", "stdout");
                 runBtn.textContent = "Ejecutar Dumper";
                 runBtn.disabled = false;
 
             } catch (error) {
-                log(`[CRITICAL] Error de inicialización: ${error.message}`);
+                appendOutput(`[CRITICAL] Error de inicialización: ${error.message}`, "stderr");
             }
+        }
+
+        async function handleFileUpload(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            pyodide.FS.writeFile(file.name, new Uint8Array(arrayBuffer));
+
+            // Fetch and execute the wrapper script
+            const wrapperCode = await (await fetch('wrapper.py')).text();
+            await pyodide.runPythonAsync(wrapperCode);
+
+            // Call the Python function and capture guaranteed output
+            const output = pyodide.runPython(`process_file('${file.name}')`);
+            appendOutput(output, 'stdout');
         }
 
         runBtn.addEventListener('click', async () => {
             const files = fileInput.files;
             if (files.length === 0) {
-                log("[WARNING] No has seleccionado ningún archivo original.");
+                appendOutput("[WARNING] No has seleccionado ningún archivo original.", "stderr");
                 return;
             }
 
             runBtn.disabled = true;
             runBtn.textContent = "Procesando...";
             downloadBtn.classList.add('hidden');
-            log("\n--- Nueva Ejecución ---");
+            appendOutput("\n--- Nueva Ejecución ---", "stdout");
 
             try {
                 // Limpiar I/O previo
                 cleanupFS('/in');
                 cleanupFS('/out');
 
-                // Montar archivos de entrada en MemFS
+                // Montar archivos de entrada en MemFS y procesar vía wrapper
                 for (let file of files) {
                     const arrayBuffer = await file.arrayBuffer();
                     pyodide.FS.writeFile(`/in/${file.name}`, new Uint8Array(arrayBuffer));
-                    log(`Cargado en memoria: ${file.name}`);
+                    appendOutput(`Cargado en memoria: ${file.name}`, "stdout");
                 }
 
                 // Preparar argumentos
                 const args = argsInput.value.split(" ").filter(a => a.trim() !== "");
-                
+
                 // Script puente de ejecución para evadir SystemExit(0)
                 const execWrapper = `
 import sys
@@ -132,14 +158,14 @@ except SystemExit as e:
         print(f"Script finalizado con código: {e}")
                 `;
 
-                log(`Ejecutando: python dumper-companion.py ${args.join(" ")}`);
+                appendOutput(`Ejecutando: python dumper-companion.py ${args.join(" ")}`, "stdout");
                 await pyodide.runPythonAsync(execWrapper);
 
-                log("Ejecución completada. Comprobando archivos generados...");
+                appendOutput("Ejecución completada. Comprobando archivos generados...", "stdout");
                 await prepareDownload();
 
             } catch (error) {
-                log(`[ERROR] ${error.message}`);
+                appendOutput(`[ERROR] ${error.message}`, "stderr");
             } finally {
                 runBtn.disabled = false;
                 runBtn.textContent = "Ejecutar Dumper";
@@ -158,7 +184,7 @@ except SystemExit as e:
         async function prepareDownload() {
             const outFiles = pyodide.FS.readdir('/out').filter(f => f !== '.' && f !== '..');
             if (outFiles.length === 0) {
-                log("[INFO] No se generó ningún archivo en /out/.");
+                appendOutput("[INFO] No se generó ningún archivo en /out/.", "stdout");
                 return;
             }
 
@@ -166,7 +192,7 @@ except SystemExit as e:
             outFiles.forEach(file => {
                 const fileData = pyodide.FS.readFile(`/out/${file}`);
                 zip.file(file, fileData);
-                log(`Empaquetando: ${file}`);
+                appendOutput(`Empaquetando: ${file}`, "stdout");
             });
 
             const content = await zip.generateAsync({ type: "blob" });
@@ -180,11 +206,11 @@ except SystemExit as e:
             };
             
             downloadBtn.classList.remove('hidden');
-            log("¡Archivos listos para descargar!");
+            appendOutput("¡Archivos listos para descargar!", "stdout");
         }
 
         // Iniciar
-        init();
+        main();
     </script>
 </body>
 </html>
