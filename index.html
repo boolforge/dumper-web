@@ -3,133 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Macintosh Dumper Web</title>
+    <title>ScummVM :: Dumper Companion Web</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
-            --bg-color: #f3f4f6;
-            --card-bg: #ffffff;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
-            --border: #e5e7eb;
+            --scumm-orange: #e78110;
+            --scumm-beige: #fff5c6;
+            --scumm-dark-brown: #6d3100;
+            --scumm-green: #00aa00;
+            --scumm-text: #333333;
             --terminal-bg: #1e1e1e;
-            --terminal-text: #d4d4d4;
-            --success: #10b981;
         }
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            font-family: Verdana, Arial, Helvetica, sans-serif;
+            background-color: var(--scumm-orange);
+            color: var(--scumm-text);
             margin: 0;
-            padding: 2rem;
+            padding: 0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100 screen;
+        }
+        header {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px 0;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .logo {
+            max-width: 200px;
         }
         .container {
-            max-width: 800px;
-            width: 100%;
-            background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
+            max-width: 900px;
+            width: 95%;
+            background: var(--scumm-beige);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            margin-bottom: 40px;
+            overflow: hidden;
+            border: 2px solid var(--scumm-dark-brown);
         }
-        h1 { margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 1rem; }
-        .step { margin-bottom: 2rem; }
-        .step-title { font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
-        .badge { background: var(--primary); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; }
-        
-        .upload-zone {
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            padding: 2rem;
-            text-align: center;
-            background: #f9fafb;
-            transition: all 0.2s ease;
-        }
-        .upload-zone.active { border-color: var(--primary); background: #eff6ff; }
-        .upload-zone input[type="file"] { display: none; }
-        .upload-btn {
-            background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 500;
-        }
-        .upload-btn:disabled { background: var(--text-muted); cursor: not-allowed; }
-        
-        .terminal {
-            background: var(--terminal-bg);
-            color: var(--terminal-text);
-            font-family: 'Courier New', Courier, monospace;
-            padding: 1rem;
-            border-radius: 8px;
-            height: 300px;
-            overflow-y: auto;
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
-        .terminal .stdout { color: #d4d4d4; }
-        .terminal .stderr { color: #ef4444; }
-        .terminal .system { color: #10b981; font-weight: bold; }
-
-        .download-area {
-            margin-top: 1rem;
-            display: none;
-            padding: 1rem;
-            background: #ecfdf5;
-            border: 1px solid #10b981;
-            border-radius: 8px;
-            text-align: center;
-        }
-        .download-btn {
-            background: var(--success);
+        .header-bar {
+            background: var(--scumm-dark-brown);
             color: white;
-            padding: 0.6rem 1.2rem;
-            border-radius: 6px;
-            text-decoration: none;
+            padding: 10px 20px;
             font-weight: bold;
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .content {
+            padding: 25px;
+        }
+        .intro-text {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 15px;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        h2 {
+            color: var(--scumm-dark-brown);
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            border-left: 5px solid var(--scumm-orange);
+            padding-left: 10px;
+        }
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 600px) {
+            .control-grid { grid-template-columns: 1fr; }
+        }
+        .card {
+            background: white;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .btn {
+            background: var(--scumm-orange);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
             display: inline-block;
+            text-align: center;
+            text-decoration: none;
+        }
+        .btn:hover { background: var(--scumm-dark-brown); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        select, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .terminal-container {
+            background: var(--terminal-bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .terminal {
+            height: 250px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #eee;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        .terminal .system { color: var(--scumm-orange); font-weight: bold; }
+        .terminal .stdout { color: #ccc; }
+        .terminal .stderr { color: #ff5555; }
+        .terminal .success { color: #55ff55; }
+
+        .download-box {
+            display: none;
+            background: #e8f5e9;
+            border: 2px solid var(--scumm-green);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .footer {
+            color: white;
+            font-size: 0.8rem;
+            margin-bottom: 20px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
+<header>
+    <img src="https://www.scummvm.org/images/scummvm_logo.png" alt="ScummVM Logo" class="logo">
+    <div style="color: white;">
+        <div style="font-size: 1.5rem; font-weight: bold;">Dumper Companion Web</div>
+        <div style="font-size: 0.8rem; opacity: 0.9;">Script Creation Utility for Maniac Mansion Virtual Machine</div>
+    </div>
+</header>
+
 <div class="container">
-    <h1>Macintosh Disk Image Extractor</h1>
+    <div class="header-bar">
+        <span>Extraction Utility</span>
+        <span id="engine-status" style="font-size: 0.8rem; font-weight: normal;">Initializing Pyodide...</span>
+    </div>
     
-    <div class="step">
-        <div class="step-title"><span class="badge">1</span> Environment Initialization</div>
-        <p style="font-size: 0.875rem; color: var(--text-muted);" id="status-text">Booting Python engine in your browser...</p>
-    </div>
-
-    <div class="step">
-        <div class="step-title"><span class="badge">2</span> Select Disk Image</div>
-        <div class="upload-zone" id="drop-zone">
-            <p>Upload a Macintosh <b>.dsk</b> or <b>.img</b> file.</p>
-            <input type="file" id="file-input" disabled />
-            <button class="upload-btn" id="upload-trigger" disabled>Select File</button>
+    <div class="content">
+        <div class="intro-text">
+            Welcome to the <strong>ScummVM Dumper Companion Web</strong>. This tool allows you to extract data files from various disk images (ISO, HFS, etc.) directly in your browser. It uses the official <code>dumper-companion.py</code> script compiled to WebAssembly.
         </div>
-        <div id="download-area" class="download-area">
-            <p style="margin-top: 0; color: #065f46; font-weight: 500;">Extraction Complete!</p>
-            <a id="download-link" href="#" class="download-btn">Download Extracted Files (ZIP)</a>
+
+        <div class="control-grid">
+            <div class="section">
+                <h2>1. Configuration</h2>
+                <div class="card">
+                    <label for="command-select"><strong>Action:</strong></label>
+                    <select id="command-select">
+                        <option value="iso">Dump ISO / HFS Image (iso)</option>
+                        <option value="probe">Probe Image Format (probe)</option>
+                        <option value="dir">Punyencode Directory (dir)</option>
+                        <option value="createmacfonts">Create Mac Fonts (createmacfonts)</option>
+                    </select>
+                    
+                    <div id="args-container" style="margin-top: 15px;">
+                        <label for="extra-args"><strong>Extra Arguments (optional):</strong></label>
+                        <input type="text" id="extra-args" placeholder="e.g. --japanese">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>2. Execution</h2>
+                <div class="card" style="text-align: center; display: flex; flex-direction: column; gap: 10px;">
+                    <input type="file" id="file-input" style="display: none;">
+                    <button id="upload-btn" class="btn" disabled>Select Image & Run</button>
+                    <p style="font-size: 0.7rem; color: #666;">Supported: .iso, .dsk, .img, .bin</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>3. Output Console</h2>
+            <div class="terminal-container">
+                <div id="terminal" class="terminal">Waiting for engine...</div>
+            </div>
+            
+            <div id="download-box" class="download-box">
+                <strong style="color: var(--scumm-green); display: block; margin-bottom: 10px;">Extraction Successful!</strong>
+                <a id="download-link" href="#" class="btn" style="background: var(--scumm-green);">Download Files (.ZIP)</a>
+            </div>
         </div>
     </div>
+</div>
 
-    <div class="step">
-        <div class="step-title"><span class="badge">3</span> Processing Logs</div>
-        <div class="terminal" id="terminal"></div>
-    </div>
+<div class="footer">
+    &copy; 2026 ScummVM Team - Running in Browser via Pyodide & WebAssembly
 </div>
 
 <script>
     let pyodide;
     const terminal = document.getElementById('terminal');
+    const engineStatus = document.getElementById('engine-status');
+    const uploadBtn = document.getElementById('upload-btn');
     const fileInput = document.getElementById('file-input');
-    const uploadTrigger = document.getElementById('upload-trigger');
-    const statusText = document.getElementById('status-text');
-    const downloadArea = document.getElementById('download-area');
+    const commandSelect = document.getElementById('command-select');
+    const extraArgsInput = document.getElementById('extra-args');
+    const downloadBox = document.getElementById('download-box');
     const downloadLink = document.getElementById('download-link');
 
     function log(text, type = 'stdout') {
+        if (terminal.innerText === "Waiting for engine...") terminal.innerText = "";
         const span = document.createElement('span');
         span.className = type;
         span.textContent = text + '\n';
@@ -137,119 +242,114 @@
         terminal.scrollTop = terminal.scrollHeight;
     }
 
-    async function initEnvironment() {
+    async function init() {
         try {
-            log("Initializing Pyodide...", "system");
+            log("Booting Pyodide Runtime...", "system");
             pyodide = await loadPyodide({
                 stdout: (text) => log(text, 'stdout'),
                 stderr: (text) => log(text, 'stderr')
             });
 
-            log("Installing dependencies (machfs, pycdlib)...", "system");
+            log("Installing Python dependencies (micropip, machfs, pycdlib)...", "system");
             await pyodide.loadPackage("micropip");
             const micropip = pyodide.pyimport("micropip");
             await micropip.install(['machfs', 'pycdlib']);
 
-            log("Fetching dumper-companion.py...", "system");
-            const response = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
-            const pythonCode = await response.text();
-            // Save to current working directory (usually /home/pyodide)
-            pyodide.FS.writeFile('dumper-companion.py', pythonCode);
+            log("Downloading dumper-companion.py script...", "system");
+            const resp = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
+            const code = await resp.text();
+            pyodide.FS.writeFile('dumper-companion.py', code);
 
-            log("✅ Environment ready. Waiting for file...", "system");
-            statusText.textContent = "Ready. Please upload a file below.";
-            statusText.style.color = "#10b981";
-            
-            fileInput.disabled = false;
-            uploadTrigger.disabled = false;
-        } catch (error) {
-            log(`Initialization failed: ${error}`, "stderr");
-            statusText.textContent = "Failed to boot environment.";
-            statusText.style.color = "#ef4444";
+            log("✅ System Ready.", "success");
+            engineStatus.textContent = "Engine Ready";
+            engineStatus.style.color = "#00ff00";
+            uploadBtn.disabled = false;
+
+        } catch (e) {
+            log("CRITICAL ERROR: " + e.message, "stderr");
+            engineStatus.textContent = "Initialization Failed";
+            engineStatus.style.color = "#ff0000";
         }
     }
 
-    async function prepareDownload() {
+    async function handleDownload() {
         try {
             const outPath = '/home/pyodide/virtual_out';
+            if (!pyodide.FS.analyzePath(outPath).exists) return;
+
             const files = [];
-            
             function walk(dir) {
                 const list = pyodide.FS.readdir(dir);
                 for (const item of list) {
                     if (item === "." || item === "..") continue;
                     const fullPath = dir + "/" + item;
                     const stat = pyodide.FS.stat(fullPath);
-                    if (pyodide.FS.isDir(stat.mode)) {
-                        walk(fullPath);
-                    } else {
-                        files.push(fullPath);
-                    }
+                    if (pyodide.FS.isDir(stat.mode)) walk(fullPath);
+                    else files.push(fullPath);
                 }
             }
-            
             walk(outPath);
-            
-            if (files.length === 0) {
-                log("No files were extracted to download.", "stderr");
-                return;
-            }
+
+            if (files.length === 0) return;
 
             const zip = new JSZip();
-            for (const filePath of files) {
-                const relativePath = filePath.replace(outPath + "/", "");
-                const content = pyodide.FS.readFile(filePath);
-                zip.file(relativePath, content);
+            for (const f of files) {
+                const rel = f.replace(outPath + "/", "");
+                zip.file(rel, pyodide.FS.readFile(f));
             }
 
-            const blob = await zip.generateAsync({type:"blob"});
-            const url = URL.createObjectURL(blob);
-            downloadLink.href = url;
-            downloadLink.download = "extracted_files.zip";
-            downloadArea.style.display = "block";
-            log("✅ ZIP package created. Click download button above.", "system");
-
-        } catch (err) {
-            log(`Error preparing download: ${err}`, "stderr");
+            const blob = await zip.generateAsync({type: "blob"});
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = "dumper_output.zip";
+            downloadBox.style.display = "block";
+            log("✅ Output package ready for download.", "success");
+        } catch (e) {
+            log("Download Error: " + e.message, "stderr");
         }
     }
 
-    uploadTrigger.addEventListener('click', () => fileInput.click());
+    uploadBtn.addEventListener('click', () => fileInput.click());
 
-    fileInput.addEventListener('change', async (event) => {
-        const file = event.target.files[0];
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
         if (!file) return;
 
-        downloadArea.style.display = "none";
-        uploadTrigger.disabled = true;
-        log(`\n--- Starting extraction for: ${file.name} ---`, "system");
-        
+        downloadBox.style.display = "none";
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = "Processing...";
+        log(`\n--- New Task: ${file.name} ---`, "system");
+
         try {
-            // Write to Pyodide Virtual FS
-            const arrayBuffer = await file.arrayBuffer();
-            pyodide.FS.writeFile(file.name, new Uint8Array(arrayBuffer));
-            
-            // Load and execute wrapper
-            const wrapperResponse = await fetch('wrapper.py');
-            const wrapperCode = await wrapperResponse.text();
+            const buffer = await file.arrayBuffer();
+            pyodide.FS.writeFile(file.name, new Uint8Array(buffer));
+
+            const wrapperResp = await fetch('wrapper.py');
+            const wrapperCode = await wrapperResp.text();
             await pyodide.runPythonAsync(wrapperCode);
+
+            const cmd = commandSelect.value;
+            const extra = extraArgsInput.value.trim();
             
-            // Run the wrapper abstraction
-            const output = pyodide.runPython(`process_file('${file.name}')`);
+            log(`Running command: ${cmd} ${file.name}`, "system");
+            
+            // Execute universal wrapper
+            const output = pyodide.runPython(`process_task('${cmd}', '${file.name}', '${extra}')`);
             log(output, 'stdout');
-            
-            await prepareDownload();
-            log("✅ Extraction process completed.", "system");
-            
+
+            if (cmd === 'iso' || cmd === 'createmacfonts') {
+                await handleDownload();
+            }
+
+            log("--- Task Completed ---", "system");
         } catch (err) {
-            log(`Execution error: ${err}`, "stderr");
+            log("Execution Error: " + err.message, "stderr");
         } finally {
-            uploadTrigger.disabled = false;
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = "Select Image & Run";
         }
     });
 
-    // Boot
-    initEnvironment();
+    init();
 </script>
 
 </body>
