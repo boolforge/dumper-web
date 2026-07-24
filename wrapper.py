@@ -3,14 +3,14 @@ import io
 import traceback
 import runpy
 
-def process_file(file_name):
+def process_file(*args):
     old_stdout, old_stderr = sys.stdout, sys.stderr
     captured_output = io.StringIO()
     sys.stdout = sys.stderr = captured_output
 
     try:
-        sys.argv = ['dumper-companion.py', file_name]
-        print(f"Starting processing for: {file_name}")
+        sys.argv = ['dumper-companion.py'] + list(args)
+        print(f"Starting processing with args: {sys.argv[1:]}")
         runpy.run_path('dumper-companion.py', run_name='__main__')
     except SystemExit as e:
         print(f"Script exited with code: {e.code}")

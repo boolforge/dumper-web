@@ -113,10 +113,11 @@
             const wrapperCode = await (await fetch('wrapper.py')).text();
             await pyodide.runPythonAsync(wrapperCode);
 
-            // Call the Python function and capture guaranteed output
-            const output = pyodide.runPython(`process_file('${file.name}')`);
-            appendOutput(output, 'stdout');
-        }
+        // Call the Python function and capture guaranteed output
+        // We use 'iso' command, input file, and /out/ directory as default
+        const output = pyodide.runPython(`process_file('iso', '${file.name}', '/out/')`);
+        appendOutput(output, 'stdout');
+    }
 
         runBtn.addEventListener('click', async () => {
             const files = fileInput.files;
