@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScummVM :: Dumper Companion Web - Master Guide</title>
+    <title>ScummVM :: Dumper Companion Web - The Ultimate Ritual</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -29,65 +29,92 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        #wrapper { width: 100%; max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.4); }
+        #wrapper { 
+            width: 100%; 
+            max-width: 1050px; 
+            margin: 20px auto; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            overflow: hidden;
+        }
 
+        /* Official ScummVM Header Style */
         header { width: 100%; }
         .row.topper {
             background-color: var(--wrapper-topper);
             display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 25px; border-bottom: 2px solid var(--border-color);
+            padding: 20px 30px; border-bottom: 3px solid var(--border-color);
         }
-        .header-left { display: flex; align-items: center; gap: 20px; }
-        .logo-maniac { height: 70px; }
-        .logo-main { height: 60px; }
-        .scummvm-tag { font-weight: bold; color: var(--link); font-size: 0.9rem; text-align: right; line-height: 1.2; }
+        .header-left { display: flex; align-items: center; gap: 25px; }
+        .logo-maniac { height: 80px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2)); }
+        .logo-main { height: 70px; }
+        .title-box { display: flex; flex-direction: column; }
+        .main-title { 
+            color: var(--link); 
+            font-size: 2.2rem; 
+            margin: 0; 
+            font-weight: 900; 
+            letter-spacing: -1px;
+            text-shadow: 1px 1px 0px white;
+        }
+        .sub-title { color: var(--menu-background); font-weight: bold; font-size: 1rem; margin-top: -5px; }
 
         .main-content {
-            display: grid; grid-template-columns: 220px 1fr; gap: 25px;
-            padding: 25px; background-color: var(--wrapper-background);
-            min-height: 700px;
+            display: grid; grid-template-columns: 240px 1fr; gap: 30px;
+            padding: 30px; background-color: var(--wrapper-background);
+            min-height: 800px;
         }
 
-        @media (max-width: 850px) { .main-content { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } }
 
-        /* Navigation Sidebar */
-        nav dl { background-color: var(--menu-background); border: 1px solid var(--menu-title-background); border-radius: 6px; margin-bottom: 25px; color: white; overflow: hidden; }
-        nav dt { background-color: var(--menu-title-background); color: var(--menu-title); padding: 10px 15px; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
-        nav dd { margin: 0; padding: 10px 15px; font-size: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 5px; }
-        nav dd .bullet-row { display: flex; align-items: center; gap: 8px; }
-        nav dd .bullet { width: 8px; height: 8px; background-color: var(--bullet-color); border-radius: 50%; display: inline-block; }
-        nav a { color: white; text-decoration: none; }
+        /* Sidebar Navigation */
+        nav dl { background-color: var(--menu-background); border: 2px solid var(--menu-title-background); border-radius: 8px; margin-bottom: 30px; color: white; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); }
+        nav dt { background-color: var(--menu-title-background); color: var(--menu-title); padding: 12px 15px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        nav dd { margin: 0; padding: 12px 15px; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px; }
+        nav dd .bullet-row { display: flex; align-items: center; gap: 10px; }
+        nav dd .bullet { width: 10px; height: 10px; background-color: var(--bullet-color); border-radius: 50%; display: inline-block; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5); }
         
-        .help-text { font-size: 0.65rem; color: rgba(255,255,255,0.8); font-style: italic; line-height: 1.2; }
+        .pedagogical-hint { font-size: 0.7rem; color: rgba(255,255,255,0.85); font-style: italic; line-height: 1.3; border-left: 2px solid var(--wrapper-topper); padding-left: 8px; margin-top: 4px; }
 
         /* Round Container */
-        .round-container { background-color: white; border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 25px; overflow: hidden; box-shadow: 2px 2px 6px rgba(0,0,0,0.1); }
-        .round-container-header { background-color: var(--wrapper-topper); padding: 12px 20px; font-weight: bold; color: var(--link); font-size: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-        .round-container-content { padding: 20px; }
+        .round-container { background-color: white; border: 2px solid var(--border-color); border-radius: 12px; margin-bottom: 30px; overflow: hidden; box-shadow: 4px 4px 10px rgba(0,0,0,0.1); }
+        .round-container-header { background-color: var(--wrapper-topper); padding: 15px 25px; font-weight: bold; color: var(--link); font-size: 1.1rem; border-bottom: 2px solid var(--border-color); }
+        .round-container-content { padding: 25px; }
 
-        /* Controls */
-        select, input[type="text"] { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; font-size: 0.9rem; box-sizing: border-box; }
-        .btn-scumm { background-color: var(--link); color: white; border: none; padding: 15px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1rem; text-transform: uppercase; transition: all 0.2s; }
-        .btn-scumm:hover { background-color: var(--menu-background); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        .btn-scumm:disabled { background-color: #999; cursor: not-allowed; transform: none; box-shadow: none; }
+        /* Form Controls */
+        select, input[type="text"] { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 0.95rem; transition: border-color 0.2s; }
+        select:focus, input[type="text"]:focus { border-color: var(--link); outline: none; }
+        
+        .btn-scumm { 
+            background-color: var(--link); color: white; border: none; padding: 18px 30px; border-radius: 8px; 
+            font-weight: bold; cursor: pointer; width: 100%; font-size: 1.1rem; text-transform: uppercase; 
+            box-shadow: 0 4px 0px #5a1403; transition: all 0.1s;
+        }
+        .btn-scumm:hover { background-color: var(--menu-background); transform: translateY(-1px); box-shadow: 0 5px 0px #5a1403; }
+        .btn-scumm:active { transform: translateY(3px); box-shadow: 0 1px 0px #5a1403; }
+        .btn-scumm:disabled { background-color: #999; box-shadow: 0 4px 0px #666; cursor: not-allowed; transform: none; }
 
-        /* Console */
-        .console-wrapper { background-color: #000; border-radius: 6px; border: 3px solid #333; position: relative; }
-        .console { color: #00ff41; font-family: "Consolas", "Monaco", monospace; font-size: 12px; padding: 20px; height: 400px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
+        /* Terminal Console */
+        .console-box { background-color: #0c0c0c; border-radius: 8px; border: 4px solid #333; position: relative; box-shadow: inset 0 0 15px rgba(0,255,0,0.1); }
+        .console { color: #00ff41; font-family: "Lucida Console", "Monaco", monospace; font-size: 13px; padding: 25px; height: 450px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; }
         .console-sys { color: var(--menu-title); font-weight: bold; }
-        .console-err { color: #ff5555; }
-        .console-hint { color: #55aaff; font-style: italic; }
+        .console-err { color: #ff4444; font-weight: bold; }
+        .console-humor { color: #55aaff; font-style: italic; }
 
         /* Utilities */
-        .utility-panel { background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-top: 20px; }
-        .utility-panel h4 { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--link); border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .utility-panel { background-color: #fdf6e3; border: 2px solid var(--border-color); border-radius: 8px; padding: 20px; margin-top: 25px; }
+        .utility-panel h4 { margin: 0 0 12px 0; font-size: 1rem; color: var(--link); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; }
 
-        .download-box { display: none; background-color: #e8f5e9; border: 2px solid var(--success-green); padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px; animation: fadeIn 0.5s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .download-box { display: none; background-color: #f1f8e9; border: 3px solid var(--success-green); padding: 30px; border-radius: 12px; text-align: center; margin-top: 25px; }
 
-        footer { background-color: var(--wrapper-background); padding: 30px; text-align: center; font-size: 0.75rem; border-top: 2px solid var(--border-color); color: #555; }
-        .monkey-box { text-align: right; padding: 10px; }
-        .monkey { height: 50px; }
+        footer { background-color: var(--wrapper-background); padding: 40px; text-align: center; font-size: 0.85rem; border-top: 3px solid var(--border-color); color: #444; line-height: 1.6; }
+        .monkey-box { text-align: right; padding: 15px; }
+        .monkey { height: 60px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1)); }
+
+        /* Pedagogical Tooltips */
+        .info-tag { background: var(--link); color: white; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; cursor: help; margin-left: 5px; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -97,7 +124,10 @@
         <div class="row topper">
             <div class="header-left">
                 <img src="https://www.scummvm.org/images/maniac-half.png" alt="Maniac Mansion" class="logo-maniac">
-                <a href="https://www.scummvm.org"><img src="https://www.scummvm.org/images/scummvm_logo.png" alt="ScummVM" class="logo-main"></a>
+                <div class="title-box">
+                    <h1 class="main-title">Dumper Companion</h1>
+                    <span class="sub-title">The Oracle of Ancient Disk Images</span>
+                </div>
             </div>
             <div class="scummvm-tag">
                 Script Creation Utility for<br>Maniac Mansion Virtual Machine
@@ -106,52 +136,50 @@
     </header>
 
     <div class="main-content">
-        <!-- Pedagogical Sidebar -->
+        <!-- The Teacher's Sidebar -->
         <nav>
             <dl>
-                <dt>1. Choose Ritual</dt>
+                <dt>Step 1: The Ritual</dt>
                 <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Action:</strong></div>
+                    <div class="bullet-row"><span class="bullet"></span><strong>Choose Command</strong><span class="info-tag" title="Decide what the Oracle should do with your offering.">?</span></div>
                     <select id="cmd-select">
                         <option value="iso">iso - Full Extraction</option>
-                        <option value="probe">probe - Inspect Image</option>
+                        <option value="probe">probe - Divine Metadata</option>
                         <option value="createmacfonts">macfonts - Font Ritual</option>
-                        <option value="dir">dir - Local Punyencode</option>
+                        <option value="dir">dir - Punyencode Dir</option>
                     </select>
-                    <div class="help-text">Use 'iso' to dump files, 'probe' to see what's inside.</div>
+                    <div class="pedagogical-hint">"ISO" is the main ritual for extracting files. "Probe" is like asking a three-headed monkey for directions.</div>
                 </dd>
             </dl>
 
             <dl>
-                <dt>2. Advanced Oracles</dt>
+                <dt>Step 2: Ancient Settings</dt>
                 <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Encoding:</strong></div>
+                    <div class="bullet-row"><span class="bullet"></span><strong>Encoding</strong><span class="info-tag" title="Tell the Oracle how to read the ancient glyphs.">?</span></div>
                     <input type="text" id="enc-input" placeholder="e.g. mac_roman">
-                    <div class="help-text">Force a specific charset if names look like gibberish.</div>
+                    <div class="pedagogical-hint">If filenames look like voodoo, try 'mac_roman' for US/EU or 'shift_jis' for Japan.</div>
                 </dd>
                 <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Japanese Mode:</strong></div>
-                    <div class="bullet-row"><input type="checkbox" id="chk-jp"> <span style="font-size: 0.75rem;">Enable MacJapanese</span></div>
-                    <div class="help-text">Essential for PC-98 and Japanese Macintosh titles.</div>
-                </dd>
-                <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Punycode:</strong></div>
-                    <div class="bullet-row"><input type="checkbox" id="chk-no-puny" checked> <span style="font-size: 0.75rem;">Enable Punyencode</span></div>
-                    <div class="help-text">Safely renames 'illegal' filenames for modern OS.</div>
+                    <div class="bullet-row"><span class="bullet"></span><strong>Modes</strong></div>
+                    <div class="bullet-row"><input type="checkbox" id="chk-jp"> <span style="font-size: 0.8rem;">Japanese Mode</span></div>
+                    <div class="pedagogical-hint">Critical for PC-98 and FM-Towns. Use it or the Oracle might get confused!</div>
+                    <div class="bullet-row" style="margin-top: 8px;"><input type="checkbox" id="chk-no-puny" checked> <span style="font-size: 0.8rem;">Punyencode Names</span></div>
+                    <div class="pedagogical-hint">Renames files so your modern Windows/Linux won't scream in terror.</div>
                 </dd>
             </dl>
 
             <dl>
-                <dt>3. Engine Status</dt>
+                <dt>The Oracle's Pulse</dt>
                 <dd>
-                    <div class="bullet-row"><span class="bullet"></span><span id="status-text" style="font-weight: bold;">Warming up...</span></div>
+                    <div class="bullet-row"><span class="bullet"></span><span id="status-text" style="font-weight: bold; color: var(--menu-title);">Waking up...</span></div>
                 </dd>
             </dl>
 
             <div class="utility-panel">
                 <h4>🔤 Punycode Translator</h4>
-                <input type="text" id="puny-input" placeholder="xn--... or text">
-                <div id="puny-result" style="margin-top: 10px; font-size: 0.7rem; font-family: monospace; word-break: break-all; color: var(--link);"></div>
+                <input type="text" id="puny-input" placeholder="Enter xn--... or text">
+                <div id="puny-result" style="margin-top: 12px; font-size: 0.75rem; font-family: monospace; word-break: break-all; color: var(--link); font-weight: bold;"></div>
+                <div class="pedagogical-hint" style="color: #666;">Convert 'illegal' filenames to safe text and back. Magic!</div>
             </div>
 
             <div class="monkey-box">
@@ -159,39 +187,39 @@
             </div>
         </nav>
 
-        <!-- Main Workbench -->
+        <!-- The Ritual Chamber -->
         <main>
             <div class="round-container">
                 <div class="round-container-header">
-                    <span>Oracle's Workbench</span>
-                    <span id="engine-ver" style="font-size: 0.7rem; font-weight: normal; opacity: 0.6;">Pyodide v0.25.0</span>
+                    <span>The Oracle's Workbench</span>
+                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.7;">Powered by ScummVM DevTools</span>
                 </div>
                 <div class="round-container-content">
-                    <h3 style="margin-top: 0; color: var(--link);">Welcome, Seeker of Ancient Data.</h3>
-                    <p style="font-size: 0.85rem; line-height: 1.5;">
-                        This utility is the web-borne incarnation of the official <strong>Dumper Companion</strong>. 
-                        It allows you to extract files from legacy disk images (ISO9660, HFS, HFS+) without leaving your browser.
+                    <h2 style="margin-top: 0; color: var(--link);">Greetings, Brave Adventurer!</h2>
+                    <p style="font-size: 0.95rem; line-height: 1.6;">
+                        You have found the web-borne <strong>Dumper Companion</strong>. This tool uses the sacred Script Creation Utility logic to extract files from ancient disk images (ISO, HFS, HFS+) directly in your browser. No installation, no voodoo, just pure WebAssembly.
                     </p>
-                    <div style="background: #fff; border: 1px dashed var(--link); padding: 15px; border-radius: 6px; margin: 20px 0;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 10px; color: var(--link);">Offering (Disk Image):</label>
+                    
+                    <div style="background: #fff; border: 3px dashed var(--link); padding: 25px; border-radius: 10px; margin: 25px 0; text-align: center;">
+                        <h4 style="margin-top: 0; color: var(--link);">Place your Offering here:</h4>
                         <input type="file" id="file-in" style="display: none;">
-                        <button id="run-btn" class="btn-scumm" disabled>UPLOAD & EXECUTE RITUAL</button>
-                        <p style="font-size: 0.7rem; color: #666; margin: 10px 0 0 0;">Supported offerings: .iso, .dsk, .img, .bin (up to 2GB recommended)</p>
+                        <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
+                        <p style="font-size: 0.75rem; color: #666; margin: 15px 0 0 0;">Supported offerings: .iso, .dsk, .img, .bin. The Oracle prefers files under 2GB.</p>
                     </div>
                 </div>
             </div>
 
             <div class="round-container">
-                <div class="round-container-header">Vision Logs (Terminal)</div>
+                <div class="round-container-header">The Ritual Logs</div>
                 <div class="round-container-content" style="padding: 0;">
-                    <div class="console-wrapper">
-                        <div id="console" class="console">Initialising the Script Creation Utility... Please wait for the Oracle to awaken.</div>
+                    <div class="console-box">
+                        <div id="console" class="console">The Oracle is currently in a deep slumber. Please wait for the ritual components to load...</div>
                     </div>
                     
                     <div id="dl-panel" class="download-box">
-                        <h3 style="color: var(--success-green); margin-top: 0;">The Ritual is Complete!</h3>
-                        <p style="font-size: 0.85rem;">The ancient files have been successfully manifested into a modern ZIP archive.</p>
-                        <a id="dl-link" href="#" class="btn-scumm" style="display: inline-block; width: auto; background-color: var(--success-green);">Download Artifacts (.ZIP)</a>
+                        <h2 style="color: var(--success-green); margin-top: 0;">Victory! The Ritual is Complete!</h2>
+                        <p style="font-size: 1rem;">The ancient data has been successfully manifested into a modern ZIP archive for your enjoyment.</p>
+                        <a id="dl-link" href="#" class="btn-scumm" style="display: inline-block; width: auto; background-color: var(--success-green); box-shadow: 0 4px 0px #2e4d03;">Claim your Artifacts (.ZIP)</a>
                     </div>
                 </div>
             </div>
@@ -199,9 +227,9 @@
     </div>
 
     <footer>
-        &copy; 2026 ScummVM Team. Ported to the Web with pedagogical intent.<br>
-        "Behind you! A three-headed monkey!"<br>
-        <span style="opacity: 0.5;">Pyodide & WebAssembly powered.</span>
+        &copy; 2026 ScummVM Team. Ported to the Web with pedagogical love.<br>
+        "I'm Guybrush Threepwood, a mighty dumper!"<br>
+        <span style="opacity: 0.6; font-size: 0.7rem;">Pyodide & WebAssembly: The technology of the future for the games of the past.</span>
     </footer>
 </div>
 
@@ -221,11 +249,11 @@
     const punyResult = document.getElementById('puny-result');
 
     function log(text, type = 'stdout') {
-        if (consoleDiv.innerText.includes("Initialising the Script")) consoleDiv.innerText = "";
+        if (consoleDiv.innerText.includes("The Oracle is currently")) consoleDiv.innerText = "";
         const div = document.createElement('div');
         if (type === 'system') div.className = 'console-sys';
         if (type === 'stderr') div.className = 'console-err';
-        if (type === 'hint') div.className = 'console-hint';
+        if (type === 'humor') div.className = 'console-humor';
         div.textContent = text;
         consoleDiv.appendChild(div);
         consoleDiv.scrollTop = consoleDiv.scrollHeight;
@@ -233,48 +261,48 @@
 
     async function init() {
         try {
-            log("> Awakening the Oracle...", "system");
+            log("> Summoning the WebAssembly Spirits...", "system");
             pyodide = await loadPyodide({
                 stdout: (text) => log(text),
                 stderr: (text) => log(text, 'stderr')
             });
 
-            log("> Gathering sacred dependencies (machfs, pycdlib)...", "system");
+            log("> Gathering the sacred dependencies (machfs, pycdlib)...", "system");
             await pyodide.loadPackage("micropip");
             const micropip = pyodide.pyimport("micropip");
             await micropip.install(['machfs', 'pycdlib']);
 
-            log("> Fetching the dumper-companion.py script...", "system");
+            log("> Retrieving dumper-companion.py from the Great Archives...", "system");
             const resp = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
             const code = await resp.text();
             pyodide.FS.writeFile('/home/pyodide/dumper-companion.py', code);
 
-            log("> Loading the Universal Bridge (wrapper.py)...", "system");
+            log("> Preparing the Universal Bridge...", "system");
             const wrapperResp = await fetch('wrapper.py');
             const wrapperCode = await wrapperResp.text();
             pyodide.FS.writeFile('/home/pyodide/wrapper.py', wrapperCode);
             await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import wrapper");
 
-            log("✅ The Oracle is awake and ready for your offerings.", "system");
-            log("Hint: Use 'probe' first if you are unsure about the image format.", "hint");
-            statusText.textContent = "Engine Ready";
+            log("✅ The Oracle has awakened and is ready for your offerings.", "system");
+            log("Humor: Don't forget to look behind you for three-headed monkeys during the process.", "humor");
+            statusText.textContent = "ORACLE READY";
             statusText.style.color = "var(--menu-title)";
             runBtn.disabled = false;
         } catch (e) {
-            log("!! The Oracle failed to awaken: " + e.message, "stderr");
-            statusText.textContent = "Awakening Failed";
-            statusText.style.color = "#ff5555";
+            log("!! The Ritual of Awakening failed: " + e.message, "stderr");
+            statusText.textContent = "AWAKENING FAILED";
+            statusText.style.color = "#ff4444";
         }
     }
 
-    // Punycode Translator
+    // Punycode Translator Logic
     punyInput.addEventListener('input', () => {
         const val = punyInput.value.trim();
         if (!val) { punyResult.textContent = ""; return; }
         try {
             const res = pyodide.runPython(`wrapper.translate_string("${val}")`);
-            punyResult.textContent = "Manifestation: " + res;
-        } catch (e) { punyResult.textContent = "Error in vision."; }
+            punyResult.textContent = "Result: " + res;
+        } catch (e) { punyResult.textContent = "Vision clouded..."; }
     });
 
     async function prepareDownload() {
@@ -294,20 +322,20 @@
         }
         walk(outPath);
         if (files.length === 0) {
-            log("! The Oracle found no files to manifest into a ZIP.", "stderr");
+            log("! The Oracle found no artifacts to manifest.", "stderr");
             return;
         }
 
-        log(`> Packaging ${files.length} artifacts into a ZIP...`, "system");
+        log(`> Manifesting ${files.length} artifacts into a ZIP package...`, "system");
         const zip = new JSZip();
         for (const f of files) {
             zip.file(f.replace(outPath + "/", ""), pyodide.FS.readFile(f));
         }
         const blob = await zip.generateAsync({type: "blob"});
         dlLink.href = URL.createObjectURL(blob);
-        dlLink.download = "scummvm_artifacts_" + Date.now() + ".zip";
+        dlLink.download = "scummvm_dump_" + Date.now() + ".zip";
         dlPanel.style.display = "block";
-        log("✅ The ZIP artifact is ready for download.", "system");
+        log("✅ The Artifacts are ready for your collection.", "system");
     }
 
     runBtn.addEventListener('click', () => fileIn.click());
@@ -318,7 +346,7 @@
 
         dlPanel.style.display = "none";
         runBtn.disabled = true;
-        runBtn.textContent = "PERFORMING RITUAL...";
+        runBtn.textContent = "RITUAL IN PROGRESS...";
         log(`\n--- Ritual of Extraction: ${file.name} ---`, "system");
 
         try {
@@ -332,8 +360,8 @@
             const enc = encInput.value.trim();
             if (enc) { args.push('--encoding'); args.push(enc); }
 
-            log(`> Calling dumper-companion.py with command: ${cmd}`, "system");
-            log(`> Parameters: ${args.join(' ') || 'None'}`, "hint");
+            log(`> Invoking the Script Creation Utility with command: ${cmd}`, "system");
+            log("Humor: Shouting 'Insult Swordfighting' at the screen may speed up the process.", "humor");
             
             const output = pyodide.runPython(`
 wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.stringify(args)})
@@ -344,10 +372,10 @@ wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.str
             log("--- Ritual of Extraction Complete ---", "system");
         } catch (err) {
             log("!! The Oracle encountered a vision error: " + err.message, "stderr");
-            log("Suggestion: Check if the file is a valid disk image and your encoding settings are correct.", "hint");
+            log("Pedagogy: This usually happens if the disk image is corrupted or in an unsupported format.", "system");
         } finally {
             runBtn.disabled = false;
-            runBtn.textContent = "UPLOAD & EXECUTE RITUAL";
+            runBtn.textContent = "BEGIN THE EXTRACTION RITUAL";
         }
     });
 
