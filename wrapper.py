@@ -49,21 +49,16 @@ def process_task_advanced(command, filename, extra_args_list):
                     script_path = p
                     break
         
-        # 3. Build Arguments Paranoically
-        # The script uses subparsers, so format is: dumper <global_flags> <command> <command_flags> <pos_args>
-        # However, dumper-companion.py defines most flags INSIDE subparsers.
-        
+        # 3. Build Arguments
         args = ['dumper-companion.py', command]
         
-        # Add flags from UI
         for arg in extra_args_list:
             if arg.startswith('--'):
-                # Handle potential space-separated flags in extra-args input
                 args.extend(shlex.split(arg))
             else:
                 args.append(arg)
 
-        # 4. Add Positional Arguments based on command
+        # 4. Add Positional Arguments
         if command in ['iso', 'createmacfonts']:
             args.extend([filename, output_dir])
         elif command in ['probe', 'dir', 'str']:
@@ -74,14 +69,14 @@ def process_task_advanced(command, filename, extra_args_list):
         print(f"Executing: {' '.join(sys.argv)}")
         print("-" * 40)
         
-        # 5. Execute
+        # 5. Execute Ritual
         runpy.run_path(script_path, run_name='__main__')
         
     except SystemExit as e:
         if e.code != 0 and e.code is not None:
-            print(f"\n[Process exited with code {e.code}]")
+            print(f"\n[The ritual was interrupted with code {e.code}]")
     except Exception:
-        print("\n[CRITICAL SCRIPT ERROR]")
+        print("\n[THE ORACLE HAS ENCOUNTERED A VISION ERROR]")
         traceback.print_exc()
     finally:
         sys.stdout, sys.stderr = old_stdout, old_stderr
