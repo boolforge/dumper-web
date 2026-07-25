@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScummVM :: Dumper Companion Web - The Ultimate Ritual</title>
+    <title>ScummVM :: Dumper Companion Web - Console Edition</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -48,7 +48,6 @@
         }
         .header-left { display: flex; align-items: center; gap: 25px; }
         .logo-maniac { height: 80px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2)); }
-        .logo-main { height: 70px; }
         .title-box { display: flex; flex-direction: column; }
         .main-title { 
             color: var(--link); 
@@ -80,7 +79,7 @@
         .round-container-header { background-color: var(--wrapper-topper); padding: 15px 25px; font-weight: bold; color: var(--link); font-size: 1.1rem; border-bottom: 2px solid var(--border-color); }
         .round-container-content { padding: 25px; }
 
-        select, input[type="text"] { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 0.95rem; transition: border-color 0.2s; }
+        select, input[type="text"] { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 0.95rem; }
         
         .btn-scumm { 
             background-color: var(--link); color: white; border: none; padding: 18px 30px; border-radius: 8px; 
@@ -91,7 +90,7 @@
         .btn-scumm:active { transform: translateY(3px); box-shadow: 0 1px 0px #5a1403; }
         .btn-scumm:disabled { background-color: #999; box-shadow: 0 4px 0px #666; cursor: not-allowed; transform: none; }
 
-        .console-box { background-color: #0c0c0c; border-radius: 8px; border: 4px solid #333; position: relative; box-shadow: inset 0 0 15px rgba(0,255,0,0.1); }
+        .console-box { background-color: #0c0c0c; border-radius: 8px; border: 4px solid #333; position: relative; }
         .console { color: #00ff41; font-family: "Lucida Console", "Monaco", monospace; font-size: 13px; padding: 25px; height: 450px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; }
         .console-sys { color: var(--menu-title); font-weight: bold; }
         .console-err { color: #ff4444; font-weight: bold; }
@@ -118,7 +117,7 @@
                 <img src="https://www.scummvm.org/images/maniac-half.png" alt="Maniac Mansion" class="logo-maniac">
                 <div class="title-box">
                     <h1 class="main-title">Dumper Companion</h1>
-                    <span class="sub-title">The Oracle of Ancient Disk Images</span>
+                    <span class="sub-title">Console Edition - 3DO, ISO, HFS & More</span>
                 </div>
             </div>
             <div class="scummvm-tag">
@@ -139,23 +138,21 @@
                         <option value="createmacfonts">macfonts - Font Ritual</option>
                         <option value="dir">dir - Punyencode Dir</option>
                     </select>
-                    <div class="pedagogical-hint">"ISO" is the main ritual for extracting files. "Probe" is like asking a three-headed monkey for directions.</div>
+                    <div class="pedagogical-hint">"ISO" now supports experimental 3DO (Opera FS) extraction!</div>
                 </dd>
             </dl>
 
             <dl>
                 <dt>Step 2: Ancient Settings</dt>
                 <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Encoding</strong><span class="info-tag" title="Tell the Oracle how to read the ancient glyphs.">?</span></div>
+                    <div class="bullet-row"><span class="bullet"></span><strong>Encoding</strong></div>
                     <input type="text" id="enc-input" placeholder="e.g. mac_roman">
-                    <div class="pedagogical-hint">If filenames look like voodoo, try 'mac_roman' for US/EU or 'shift_jis' for Japan.</div>
+                    <div class="pedagogical-hint">For console games, the Oracle usually handles names automatically.</div>
                 </dd>
                 <dd>
                     <div class="bullet-row"><span class="bullet"></span><strong>Modes</strong></div>
                     <div class="bullet-row"><input type="checkbox" id="chk-jp"> <span style="font-size: 0.8rem;">Japanese Mode</span></div>
-                    <div class="pedagogical-hint">Critical for PC-98 and FM-Towns. Use it or the Oracle might get confused!</div>
                     <div class="bullet-row" style="margin-top: 8px;"><input type="checkbox" id="chk-no-puny" checked> <span style="font-size: 0.8rem;">Punyencode Names</span></div>
-                    <div class="pedagogical-hint">Renames files so your modern Windows/Linux won't scream in terror.</div>
                 </dd>
             </dl>
 
@@ -181,27 +178,27 @@
             <div class="round-container">
                 <div class="round-container-header">
                     <span>The Oracle's Workbench</span>
-                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.7;">Powered by ScummVM DevTools</span>
+                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.7;">Console Edition v2.0</span>
                 </div>
                 <div class="round-container-content">
-                    <h2 style="margin-top: 0; color: var(--link);">Greetings, Brave Adventurer!</h2>
+                    <h2 style="margin-top: 0; color: var(--link);">Greetings, Console Explorer!</h2>
                     <p style="font-size: 0.95rem; line-height: 1.6;">
-                        You have found the web-borne <strong>Dumper Companion</strong>. This tool uses the sacred Script Creation Utility logic to extract files from ancient disk images (ISO, HFS, HFS+) directly in your browser.
+                        This version of the <strong>Dumper Companion</strong> has been enhanced with experimental support for <strong>3DO (Opera FileSystem)</strong>. It can also handle standard ISO9660 images used by Saturn, PSX, and PC-Engine.
                     </p>
                     
                     <div style="background: #fff; border: 3px dashed var(--link); padding: 25px; border-radius: 10px; margin: 25px 0; text-align: center;">
-                        <h4 style="margin-top: 0; color: var(--link);">Place your Offering here:</h4>
+                        <h4 style="margin-top: 0; color: var(--link);">Place your Console Offering here:</h4>
                         <input type="file" id="file-in" style="display: none;">
                         <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
-                        <p style="font-size: 0.75rem; color: #666; margin: 15px 0 0 0;">Supported offerings: .iso, .dsk, .img, .bin. The Oracle prefers files under 2GB.</p>
+                        <p style="font-size: 0.75rem; color: #666; margin: 15px 0 0 0;">Supported: .iso, .bin (Data Track), .img. Multi-track BIN/CUE should be converted to ISO first.</p>
                     </div>
 
                     <div id="troubleshooting" style="margin-top: 20px; background: #fff5c6; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; font-size: 0.85rem;">
-                        <strong style="color: var(--link);">💡 The Oracle is Confused? (Troubleshooting)</strong>
+                        <strong style="color: var(--link);">💡 Console Dumping Tips</strong>
                         <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-                            <li><strong>IndexError / Unknown FS:</strong> This happens if the image isn't a standard Data CD. Ensure it's not a multi-track BIN/CUE (with audio).</li>
-                            <li><strong>Macintosh Images:</strong> Some .dsk files are raw dumps. The Oracle needs a partition map to find the treasure.</li>
-                            <li><strong>Rebel Assault & Multi-track:</strong> For games with CD-Audio, the dumper only sees the first track. Try a different dump format!</li>
+                            <li><strong>3DO Games:</strong> Arrastra el archivo .iso o .bin. El Oráculo detectará automáticamente el sistema de archivos Opera.</li>
+                            <li><strong>PSX/Saturn:</strong> Si tienes un BIN/CUE, sube solo el archivo .bin de la pista de datos (normalmente el más grande).</li>
+                            <li><strong>PC-Engine:</strong> Algunos discos usan sectores de 2352 bytes. Si la extracción falla, intenta convertir la imagen a un formato ISO estándar de 2048 bytes/sector.</li>
                         </ul>
                     </div>
                 </div>
@@ -211,12 +208,11 @@
                 <div class="round-container-header">The Ritual Logs</div>
                 <div class="round-container-content" style="padding: 0;">
                     <div class="console-box">
-                        <div id="console" class="console">The Oracle is currently in a deep slumber. Please wait for the ritual components to load...</div>
+                        <div id="console" class="console">The Oracle is currently in a deep slumber...</div>
                     </div>
                     
                     <div id="dl-panel" class="download-box">
-                        <h2 style="color: var(--success-green); margin-top: 0;">Victory! The Ritual is Complete!</h2>
-                        <p style="font-size: 1rem;">The ancient data has been successfully manifested into a modern ZIP archive.</p>
+                        <h2 style="color: var(--success-green); margin-top: 0;">Victory! The Artifacts are Manifested!</h2>
                         <a id="dl-link" href="#" class="btn-scumm" style="display: inline-block; width: auto; background-color: var(--success-green); box-shadow: 0 4px 0px #2e4d03;">Claim your Artifacts (.ZIP)</a>
                     </div>
                 </div>
@@ -225,9 +221,8 @@
     </div>
 
     <footer>
-        &copy; 2026 ScummVM Team. Ported to the Web with pedagogical love.<br>
-        "I'm Guybrush Threepwood, a mighty dumper!"<br>
-        <span style="opacity: 0.6; font-size: 0.7rem;">Pyodide & WebAssembly: The technology of the future for the games of the past.</span>
+        &copy; 2026 ScummVM Team. Enhanced for Consoles with love.<br>
+        "I'm Guybrush Threepwood, a mighty console dumper!"
     </footer>
 </div>
 
@@ -265,30 +260,29 @@
                 stderr: (text) => log(text, 'stderr')
             });
 
-            log("> Gathering the sacred dependencies (machfs, pycdlib)...", "system");
+            log("> Gathering sacred dependencies (machfs, pycdlib)...", "system");
             await pyodide.loadPackage("micropip");
             const micropip = pyodide.pyimport("micropip");
             await micropip.install(['machfs', 'pycdlib']);
 
-            log("> Retrieving dumper-companion.py from the Great Archives...", "system");
+            log("> Retrieving dumper-companion.py...", "system");
             const resp = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
             const code = await resp.text();
             pyodide.FS.writeFile('/home/pyodide/dumper-companion.py', code);
 
-            log("> Preparing the Universal Bridge...", "system");
+            log("> Preparing the Universal Console Bridge...", "system");
             const wrapperResp = await fetch('wrapper.py');
             const wrapperCode = await wrapperResp.text();
             pyodide.FS.writeFile('/home/pyodide/wrapper.py', wrapperCode);
             await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import wrapper");
 
-            log("✅ The Oracle has awakened and is ready for your offerings.", "system");
+            log("✅ The Oracle has awakened. Console support active.", "system");
             statusText.textContent = "ORACLE READY";
             statusText.style.color = "var(--menu-title)";
             runBtn.disabled = false;
         } catch (e) {
-            log("!! The Ritual of Awakening failed: " + e.message, "stderr");
+            log("!! Awakening failed: " + e.message, "stderr");
             statusText.textContent = "AWAKENING FAILED";
-            statusText.style.color = "#ff4444";
         }
     }
 
@@ -325,9 +319,9 @@
         }
         const blob = await zip.generateAsync({type: "blob"});
         dlLink.href = URL.createObjectURL(blob);
-        dlLink.download = "scummvm_artifacts_" + Date.now() + ".zip";
+        dlLink.download = "scummvm_console_dump_" + Date.now() + ".zip";
         dlPanel.style.display = "block";
-        log("✅ The Artifacts are ready for your collection.", "system");
+        log("✅ The Console Artifacts are ready.", "system");
     }
 
     runBtn.addEventListener('click', () => fileIn.click());
@@ -338,7 +332,7 @@
 
         dlPanel.style.display = "none";
         runBtn.disabled = true;
-        runBtn.textContent = "RITUAL IN PROGRESS...";
+        runBtn.textContent = "EXTRACTING...";
         log(`\n--- Ritual of Extraction: ${file.name} ---`, "system");
 
         try {
@@ -352,17 +346,15 @@
             const enc = encInput.value.trim();
             if (enc) { args.push('--encoding'); args.push(enc); }
 
-            log(`> Invoking the Script Creation Utility with command: ${cmd}`, "system");
-            
             const output = pyodide.runPython(`
 wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.stringify(args)})
 `);
             log(output);
 
             if (cmd === 'iso' || cmd === 'createmacfonts') await prepareDownload();
-            log("--- Ritual of Extraction Complete ---", "system");
+            log("--- Ritual Complete ---", "system");
         } catch (err) {
-            log("!! The Oracle encountered a vision error: " + err.message, "stderr");
+            log("!! Vision error: " + err.message, "stderr");
         } finally {
             runBtn.disabled = false;
             runBtn.textContent = "BEGIN THE EXTRACTION RITUAL";
