@@ -40,7 +40,6 @@
             overflow: hidden;
         }
 
-        /* Official ScummVM Header Style */
         header { width: 100%; }
         .row.topper {
             background-color: var(--wrapper-topper);
@@ -69,7 +68,6 @@
 
         @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } }
 
-        /* Sidebar Navigation */
         nav dl { background-color: var(--menu-background); border: 2px solid var(--menu-title-background); border-radius: 8px; margin-bottom: 30px; color: white; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); }
         nav dt { background-color: var(--menu-title-background); color: var(--menu-title); padding: 12px 15px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); }
         nav dd { margin: 0; padding: 12px 15px; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px; }
@@ -78,14 +76,11 @@
         
         .pedagogical-hint { font-size: 0.7rem; color: rgba(255,255,255,0.85); font-style: italic; line-height: 1.3; border-left: 2px solid var(--wrapper-topper); padding-left: 8px; margin-top: 4px; }
 
-        /* Round Container */
         .round-container { background-color: white; border: 2px solid var(--border-color); border-radius: 12px; margin-bottom: 30px; overflow: hidden; box-shadow: 4px 4px 10px rgba(0,0,0,0.1); }
         .round-container-header { background-color: var(--wrapper-topper); padding: 15px 25px; font-weight: bold; color: var(--link); font-size: 1.1rem; border-bottom: 2px solid var(--border-color); }
         .round-container-content { padding: 25px; }
 
-        /* Form Controls */
         select, input[type="text"] { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 0.95rem; transition: border-color 0.2s; }
-        select:focus, input[type="text"]:focus { border-color: var(--link); outline: none; }
         
         .btn-scumm { 
             background-color: var(--link); color: white; border: none; padding: 18px 30px; border-radius: 8px; 
@@ -96,14 +91,12 @@
         .btn-scumm:active { transform: translateY(3px); box-shadow: 0 1px 0px #5a1403; }
         .btn-scumm:disabled { background-color: #999; box-shadow: 0 4px 0px #666; cursor: not-allowed; transform: none; }
 
-        /* Terminal Console */
         .console-box { background-color: #0c0c0c; border-radius: 8px; border: 4px solid #333; position: relative; box-shadow: inset 0 0 15px rgba(0,255,0,0.1); }
         .console { color: #00ff41; font-family: "Lucida Console", "Monaco", monospace; font-size: 13px; padding: 25px; height: 450px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; }
         .console-sys { color: var(--menu-title); font-weight: bold; }
         .console-err { color: #ff4444; font-weight: bold; }
         .console-humor { color: #55aaff; font-style: italic; }
 
-        /* Utilities */
         .utility-panel { background-color: #fdf6e3; border: 2px solid var(--border-color); border-radius: 8px; padding: 20px; margin-top: 25px; }
         .utility-panel h4 { margin: 0 0 12px 0; font-size: 1rem; color: var(--link); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; }
 
@@ -113,7 +106,6 @@
         .monkey-box { text-align: right; padding: 15px; }
         .monkey { height: 60px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1)); }
 
-        /* Pedagogical Tooltips */
         .info-tag { background: var(--link); color: white; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; cursor: help; margin-left: 5px; vertical-align: middle; }
     </style>
 </head>
@@ -136,7 +128,6 @@
     </header>
 
     <div class="main-content">
-        <!-- The Teacher's Sidebar -->
         <nav>
             <dl>
                 <dt>Step 1: The Ritual</dt>
@@ -179,7 +170,6 @@
                 <h4>🔤 Punycode Translator</h4>
                 <input type="text" id="puny-input" placeholder="Enter xn--... or text">
                 <div id="puny-result" style="margin-top: 12px; font-size: 0.75rem; font-family: monospace; word-break: break-all; color: var(--link); font-weight: bold;"></div>
-                <div class="pedagogical-hint" style="color: #666;">Convert 'illegal' filenames to safe text and back. Magic!</div>
             </div>
 
             <div class="monkey-box">
@@ -187,7 +177,6 @@
             </div>
         </nav>
 
-        <!-- The Ritual Chamber -->
         <main>
             <div class="round-container">
                 <div class="round-container-header">
@@ -197,7 +186,7 @@
                 <div class="round-container-content">
                     <h2 style="margin-top: 0; color: var(--link);">Greetings, Brave Adventurer!</h2>
                     <p style="font-size: 0.95rem; line-height: 1.6;">
-                        You have found the web-borne <strong>Dumper Companion</strong>. This tool uses the sacred Script Creation Utility logic to extract files from ancient disk images (ISO, HFS, HFS+) directly in your browser. No installation, no voodoo, just pure WebAssembly.
+                        You have found the web-borne <strong>Dumper Companion</strong>. This tool uses the sacred Script Creation Utility logic to extract files from ancient disk images (ISO, HFS, HFS+) directly in your browser.
                     </p>
                     
                     <div style="background: #fff; border: 3px dashed var(--link); padding: 25px; border-radius: 10px; margin: 25px 0; text-align: center;">
@@ -205,6 +194,15 @@
                         <input type="file" id="file-in" style="display: none;">
                         <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
                         <p style="font-size: 0.75rem; color: #666; margin: 15px 0 0 0;">Supported offerings: .iso, .dsk, .img, .bin. The Oracle prefers files under 2GB.</p>
+                    </div>
+
+                    <div id="troubleshooting" style="margin-top: 20px; background: #fff5c6; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; font-size: 0.85rem;">
+                        <strong style="color: var(--link);">💡 The Oracle is Confused? (Troubleshooting)</strong>
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                            <li><strong>IndexError / Unknown FS:</strong> This happens if the image isn't a standard Data CD. Ensure it's not a multi-track BIN/CUE (with audio).</li>
+                            <li><strong>Macintosh Images:</strong> Some .dsk files are raw dumps. The Oracle needs a partition map to find the treasure.</li>
+                            <li><strong>Rebel Assault & Multi-track:</strong> For games with CD-Audio, the dumper only sees the first track. Try a different dump format!</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -218,7 +216,7 @@
                     
                     <div id="dl-panel" class="download-box">
                         <h2 style="color: var(--success-green); margin-top: 0;">Victory! The Ritual is Complete!</h2>
-                        <p style="font-size: 1rem;">The ancient data has been successfully manifested into a modern ZIP archive for your enjoyment.</p>
+                        <p style="font-size: 1rem;">The ancient data has been successfully manifested into a modern ZIP archive.</p>
                         <a id="dl-link" href="#" class="btn-scumm" style="display: inline-block; width: auto; background-color: var(--success-green); box-shadow: 0 4px 0px #2e4d03;">Claim your Artifacts (.ZIP)</a>
                     </div>
                 </div>
@@ -284,7 +282,6 @@
             await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import wrapper");
 
             log("✅ The Oracle has awakened and is ready for your offerings.", "system");
-            log("Humor: Don't forget to look behind you for three-headed monkeys during the process.", "humor");
             statusText.textContent = "ORACLE READY";
             statusText.style.color = "var(--menu-title)";
             runBtn.disabled = false;
@@ -295,7 +292,6 @@
         }
     }
 
-    // Punycode Translator Logic
     punyInput.addEventListener('input', () => {
         const val = punyInput.value.trim();
         if (!val) { punyResult.textContent = ""; return; }
@@ -321,19 +317,15 @@
             }
         }
         walk(outPath);
-        if (files.length === 0) {
-            log("! The Oracle found no artifacts to manifest.", "stderr");
-            return;
-        }
+        if (files.length === 0) return;
 
-        log(`> Manifesting ${files.length} artifacts into a ZIP package...`, "system");
         const zip = new JSZip();
         for (const f of files) {
             zip.file(f.replace(outPath + "/", ""), pyodide.FS.readFile(f));
         }
         const blob = await zip.generateAsync({type: "blob"});
         dlLink.href = URL.createObjectURL(blob);
-        dlLink.download = "scummvm_dump_" + Date.now() + ".zip";
+        dlLink.download = "scummvm_artifacts_" + Date.now() + ".zip";
         dlPanel.style.display = "block";
         log("✅ The Artifacts are ready for your collection.", "system");
     }
@@ -361,7 +353,6 @@
             if (enc) { args.push('--encoding'); args.push(enc); }
 
             log(`> Invoking the Script Creation Utility with command: ${cmd}`, "system");
-            log("Humor: Shouting 'Insult Swordfighting' at the screen may speed up the process.", "humor");
             
             const output = pyodide.runPython(`
 wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.stringify(args)})
@@ -372,7 +363,6 @@ wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.str
             log("--- Ritual of Extraction Complete ---", "system");
         } catch (err) {
             log("!! The Oracle encountered a vision error: " + err.message, "stderr");
-            log("Pedagogy: This usually happens if the disk image is corrupted or in an unsupported format.", "system");
         } finally {
             runBtn.disabled = false;
             runBtn.textContent = "BEGIN THE EXTRACTION RITUAL";
