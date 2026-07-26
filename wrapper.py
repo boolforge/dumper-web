@@ -14,6 +14,7 @@ class UniversalCDHandler:
         self.sector_size = 2048
         self.data_offset = 0
         self.format = "unknown"
+        self.file_size = os.path.getsize(iso_path)
 
     def detect_format(self):
         try:
@@ -22,31 +23,34 @@ class UniversalCDHandler:
                 f.seek(0)
                 if f.read(7) == b'\x01ZZZZZ\x01':
                     self.format = "3do"
+                    self.sector_size = 2048
+                    self.data_offset = 0
                     return "3DO Opera FS"
                 
-                f.seek(16)
+                # 2. Check for 3DO RAW (PVD at sector 16)
+                f.seek(16 * 2352)
                 if f.read(7) == b'\x01ZZZZZ\x01':
                     self.format = "3do_raw"
                     self.sector_size = 2352
                     self.data_offset = 16
                     return "3DO Opera FS (RAW)"
 
-                # 2. Check for ISO9660 (Standard Mode 1)
-                f.seek(0x8000)
+                # 3. Check for ISO9660 (Standard Mode 1)
+                f.seek(16 * 2048)
                 if f.read(6) == b'\x01CD001':
                     self.format = "iso9660"
-                    return "Standard ISO9660 (PC/Sega CD/Saturn)"
+                    return "Standard ISO9660"
 
-                # 3. Check for PSX / Saturn (Mode 2 XA RAW)
-                f.seek(37632 + 24)
+                # 4. Check for Console ISO9660 (PSX/Saturn RAW)
+                f.seek(16 * 2352 + 24)
                 if f.read(6) == b'\x01CD001':
                     self.format = "iso9660_xa"
                     self.sector_size = 2352
                     self.data_offset = 24
                     return "Console ISO9660 (PSX/Saturn RAW)"
 
-                # 4. Check for CD-i (Green Book)
-                f.seek(0x8000 + 8)
+                # 5. Check for CD-i (Green Book)
+                f.seek(16 * 2048 + 8)
                 if f.read(4) == b'CD-I':
                     self.format = "cdi"
                     return "Philips CD-i (Green Book)"
@@ -57,9 +61,8 @@ class UniversalCDHandler:
     def extract(self):
         if self.format.startswith("3do"):
             opera = OperaFS(self.iso_path, self.output_dir)
-            if self.format == "3do_raw":
-                opera.block_size = 2352
-                opera.sector_offset = 16
+            opera.block_size = self.sector_size
+            opera.sector_offset = self.data_offset
             opera.extract()
             return True
         elif self.format == "cdi":
@@ -67,7 +70,6 @@ class UniversalCDHandler:
             cdi.extract()
             return True
         elif self.format == "iso9660_xa":
-            print("Extracting Console ISO9660 (XA Mode 2)...")
             return self._extract_xa_to_mode1()
         return False
 
@@ -82,50 +84,80 @@ class UniversalCDHandler:
         return temp_iso
 
 class OperaFS:
+    """Robust 3DO Opera FileSystem Parser with Overflow Protection"""
     def __init__(self, iso_path, output_dir):
         self.iso_path = iso_path
         self.output_dir = output_dir
         self.block_size = 2048
         self.sector_offset = 0
+        self.file_size = os.path.getsize(iso_path)
 
     def extract(self):
         with open(self.iso_path, "rb") as f:
+            # Root block is at offset 104 of the Volume Label
             f.seek(self.sector_offset + 104)
             root_block = struct.unpack(">I", f.read(4))[0]
+            print(f"Manifesting Root Oracle at block {root_block}...")
             self._extract_node(f, root_block, self.output_dir)
 
     def _extract_node(self, f, block, current_out):
         if not os.path.exists(current_out): os.makedirs(current_out, exist_ok=True)
-        f.seek(block * self.block_size + self.sector_offset)
+        
+        # Security check to prevent OverflowError
+        pos = block * self.block_size + self.sector_offset
+        if pos >= self.file_size:
+            print(f"!! The Oracle warns: Block {block} is beyond the horizon. Skipping.")
+            return
+
+        f.seek(pos)
         dir_header = f.read(20)
         if len(dir_header) < 20: return
-        num_entries = struct.unpack(">I", dir_header[16:20])[0]
-        for i in range(num_entries):
-            f.seek(block * self.block_size + self.sector_offset + 20 + (i * 72))
+        
+        # Offset 16 is the directory size in bytes, NOT the number of entries
+        dir_size = struct.unpack(">I", dir_header[16:20])[0]
+        
+        # Each entry is 72 bytes. We skip the 20-byte header.
+        entries_count = (dir_size - 20) // 72
+        if entries_count > 1000: # Sanity check
+             print("!! The Oracle senses a corrupted directory structure. Limiting extraction.")
+             entries_count = 1000
+
+        for i in range(entries_count):
+            entry_pos = pos + 20 + (i * 72)
+            if entry_pos + 72 > self.file_size: break
+            
+            f.seek(entry_pos)
             entry_data = f.read(72)
             if len(entry_data) < 72: break
+            
             flags = struct.unpack(">I", entry_data[0:4])[0]
             offset = struct.unpack(">I", entry_data[16:20])[0]
             size = struct.unpack(">I", entry_data[20:24])[0]
             name = entry_data[32:64].split(b'\x00')[0].decode('ascii', 'ignore').strip()
+            
             if not name or name in ['.', '..']: continue
+            
             target = os.path.join(current_out, name)
-            if bool(flags & 0x02): self._extract_node(f, offset, target)
-            else:
-                f.seek(offset * self.block_size + self.sector_offset)
-                with open(target, "wb") as out_f: out_f.write(f.read(size))
+            if bool(flags & 0x02): # Directory
+                self._extract_node(f, offset, target)
+            else: # File
+                file_pos = offset * self.block_size + self.sector_offset
+                if file_pos + size <= self.file_size:
+                    f.seek(file_pos)
+                    with open(target, "wb") as out_f:
+                        out_f.write(f.read(size))
+                else:
+                    print(f"!! Skipping artifact '{name}': out of bounds.")
 
 class CDiParser:
-    """Minimalist Philips CD-i Green Book Parser"""
     def __init__(self, iso_path, output_dir):
         self.iso_path = iso_path
         self.output_dir = output_dir
-        self.block_size = 2048
+        self.file_size = os.path.getsize(iso_path)
 
     def extract(self):
         print("Commencing CD-i Green Book Ritual...")
         with open(self.iso_path, "rb") as f:
-            # CD-i Root is usually in the PVD at sector 16
             f.seek(16 * 2048 + 156)
             root_record = f.read(34)
             extent = struct.unpack("<I", root_record[2:6])[0]
@@ -134,7 +166,10 @@ class CDiParser:
 
     def _extract_dir(self, f, extent, size, current_out):
         if not os.path.exists(current_out): os.makedirs(current_out, exist_ok=True)
-        f.seek(extent * 2048)
+        pos_in_file = extent * 2048
+        if pos_in_file >= self.file_size: return
+        
+        f.seek(pos_in_file)
         dir_data = f.read(size)
         pos = 0
         while pos < len(dir_data):
@@ -149,8 +184,7 @@ class CDiParser:
             
             if name and name not in ['\x00', '\x01']:
                 target = os.path.join(current_out, name)
-                if file_flags & 0x02: # Directory
-                    # Need to be careful with recursion in CD-i
+                if file_flags & 0x02:
                     curr_pos = f.tell()
                     self._extract_dir(f, extent_loc, data_len, target)
                     f.seek(curr_pos)
@@ -194,7 +228,7 @@ def process_task_advanced(command, filename, extra_args_list):
                 print(f"\n✅ {fmt_name} Extraction Complete.")
                 return captured_output.getvalue()
             elif isinstance(result, str):
-                filename = result # Use the temp Mode 1 ISO
+                filename = result
 
         args = ['dumper-companion.py', command]
         args.extend(extra_args_list)
