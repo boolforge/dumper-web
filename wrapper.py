@@ -212,7 +212,8 @@ def process_task_advanced(command, filename, extra_args_list):
     captured_output = io.StringIO()
     sys.stdout = sys.stderr = captured_output
     try:
-        base_dir = '/home/pyodide'
+        # Detect environment: Pyodide usually has /home/pyodide, sandbox has /home/ubuntu
+        base_dir = '/home/pyodide' if os.path.exists('/home/pyodide') else os.getcwd()
         script_path = os.path.join(base_dir, 'dumper-companion.py')
         output_dir = os.path.join(base_dir, 'virtual_out')
         if os.path.exists(output_dir): shutil.rmtree(output_dir)
