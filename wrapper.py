@@ -6,93 +6,160 @@ import runpy
 import shutil
 import struct
 
+class UniversalCDHandler:
+    """Universal Console CD Handler for ScummVM Dumper Web"""
+    def __init__(self, iso_path, output_dir):
+        self.iso_path = iso_path
+        self.output_dir = output_dir
+        self.sector_size = 2048
+        self.data_offset = 0
+        self.format = "unknown"
+
+    def detect_format(self):
+        try:
+            with open(self.iso_path, "rb") as f:
+                # 1. Check for 3DO Opera FS (Block 0)
+                f.seek(0)
+                if f.read(7) == b'\x01ZZZZZ\x01':
+                    self.format = "3do"
+                    return "3DO Opera FS"
+                
+                f.seek(16)
+                if f.read(7) == b'\x01ZZZZZ\x01':
+                    self.format = "3do_raw"
+                    self.sector_size = 2352
+                    self.data_offset = 16
+                    return "3DO Opera FS (RAW)"
+
+                # 2. Check for ISO9660 (Standard Mode 1)
+                f.seek(0x8000)
+                if f.read(6) == b'\x01CD001':
+                    self.format = "iso9660"
+                    return "Standard ISO9660 (PC/Sega CD/Saturn)"
+
+                # 3. Check for PSX / Saturn (Mode 2 XA RAW)
+                f.seek(37632 + 24)
+                if f.read(6) == b'\x01CD001':
+                    self.format = "iso9660_xa"
+                    self.sector_size = 2352
+                    self.data_offset = 24
+                    return "Console ISO9660 (PSX/Saturn RAW)"
+
+                # 4. Check for CD-i (Green Book)
+                f.seek(0x8000 + 8)
+                if f.read(4) == b'CD-I':
+                    self.format = "cdi"
+                    return "Philips CD-i (Green Book)"
+
+            return "Unknown Format"
+        except: return "Detection Failed"
+
+    def extract(self):
+        if self.format.startswith("3do"):
+            opera = OperaFS(self.iso_path, self.output_dir)
+            if self.format == "3do_raw":
+                opera.block_size = 2352
+                opera.sector_offset = 16
+            opera.extract()
+            return True
+        elif self.format == "cdi":
+            cdi = CDiParser(self.iso_path, self.output_dir)
+            cdi.extract()
+            return True
+        elif self.format == "iso9660_xa":
+            print("Extracting Console ISO9660 (XA Mode 2)...")
+            return self._extract_xa_to_mode1()
+        return False
+
+    def _extract_xa_to_mode1(self):
+        temp_iso = os.path.join(os.path.dirname(self.iso_path), "temp_mode1.iso")
+        print(f"Converting XA RAW to Mode 1 for the Oracle...")
+        with open(self.iso_path, "rb") as fin, open(temp_iso, "wb") as fout:
+            while True:
+                sector = fin.read(self.sector_size)
+                if not sector: break
+                fout.write(sector[self.data_offset : self.data_offset + 2048])
+        return temp_iso
+
 class OperaFS:
-    """Robust 3DO Opera FileSystem Parser based on Portfolio OS specs"""
     def __init__(self, iso_path, output_dir):
         self.iso_path = iso_path
         self.output_dir = output_dir
         self.block_size = 2048
         self.sector_offset = 0
 
-    def detect(self):
-        try:
-            with open(self.iso_path, "rb") as f:
-                # Try standard offset (2048)
-                f.seek(0)
-                sig = f.read(7)
-                if sig == b'\x01ZZZZZ\x01':
-                    self.block_size = 2048
-                    self.sector_offset = 0
-                    return True
-                
-                # Try RAW offset (2352) - Data usually starts at 16 or 24 bytes in
-                f.seek(16)
-                sig = f.read(7)
-                if sig == b'\x01ZZZZZ\x01':
-                    self.block_size = 2352
-                    self.sector_offset = 16
-                    return True
-                
-                return False
-        except:
-            return False
-
     def extract(self):
-        print(f"Detected 3DO Opera FileSystem (Block Size: {self.block_size}).")
         with open(self.iso_path, "rb") as f:
-            # Volume Header is in Block 0
             f.seek(self.sector_offset + 104)
             root_block = struct.unpack(">I", f.read(4))[0]
-            root_size = struct.unpack(">I", f.read(4))[0]
-            
-            print(f"Manifesting Root Sanctum at block {root_block}...")
             self._extract_node(f, root_block, self.output_dir)
 
     def _extract_node(self, f, block, current_out):
-        if not os.path.exists(current_out):
-            os.makedirs(current_out, exist_ok=True)
-            
-        # Read Directory Header
+        if not os.path.exists(current_out): os.makedirs(current_out, exist_ok=True)
         f.seek(block * self.block_size + self.sector_offset)
         dir_header = f.read(20)
         if len(dir_header) < 20: return
-        
-        # Directory Header Structure:
-        # 0-3: anchor, 4-7: next_dir, 8-11: prev_dir, 12-15: first_free, 16-19: num_entries
         num_entries = struct.unpack(">I", dir_header[16:20])[0]
-        
-        # Entries start right after header (20 bytes)
         for i in range(num_entries):
-            # Each entry is 72 bytes
             f.seek(block * self.block_size + self.sector_offset + 20 + (i * 72))
             entry_data = f.read(72)
             if len(entry_data) < 72: break
-            
             flags = struct.unpack(">I", entry_data[0:4])[0]
-            id = struct.unpack(">I", entry_data[4:8])[0]
             offset = struct.unpack(">I", entry_data[16:20])[0]
             size = struct.unpack(">I", entry_data[20:24])[0]
-            # Name is at offset 32, max 32 chars
-            name_bytes = entry_data[32:64].split(b'\x00')[0]
-            try:
-                name = name_bytes.decode('ascii', 'ignore').strip()
-            except:
-                name = f"unknown_{i}"
-            
+            name = entry_data[32:64].split(b'\x00')[0].decode('ascii', 'ignore').strip()
             if not name or name in ['.', '..']: continue
-            
             target = os.path.join(current_out, name)
-            is_dir = bool(flags & 0x02) # Directory flag in Opera FS
-            
-            if is_dir:
-                print(f" -> Entering Chamber: {name}")
-                self._extract_node(f, offset, target)
+            if bool(flags & 0x02): self._extract_node(f, offset, target)
             else:
-                print(f" -> Recovering Artifact: {name} ({size} bytes)")
                 f.seek(offset * self.block_size + self.sector_offset)
-                data = f.read(size)
-                with open(target, "wb") as out_f:
-                    out_f.write(data)
+                with open(target, "wb") as out_f: out_f.write(f.read(size))
+
+class CDiParser:
+    """Minimalist Philips CD-i Green Book Parser"""
+    def __init__(self, iso_path, output_dir):
+        self.iso_path = iso_path
+        self.output_dir = output_dir
+        self.block_size = 2048
+
+    def extract(self):
+        print("Commencing CD-i Green Book Ritual...")
+        with open(self.iso_path, "rb") as f:
+            # CD-i Root is usually in the PVD at sector 16
+            f.seek(16 * 2048 + 156)
+            root_record = f.read(34)
+            extent = struct.unpack("<I", root_record[2:6])[0]
+            size = struct.unpack("<I", root_record[10:14])[0]
+            self._extract_dir(f, extent, size, self.output_dir)
+
+    def _extract_dir(self, f, extent, size, current_out):
+        if not os.path.exists(current_out): os.makedirs(current_out, exist_ok=True)
+        f.seek(extent * 2048)
+        dir_data = f.read(size)
+        pos = 0
+        while pos < len(dir_data):
+            rec_len = dir_data[pos]
+            if rec_len == 0: break
+            
+            extent_loc = struct.unpack("<I", dir_data[pos+2:pos+6])[0]
+            data_len = struct.unpack("<I", dir_data[pos+10:pos+14])[0]
+            file_flags = dir_data[pos+25]
+            name_len = dir_data[pos+32]
+            name = dir_data[pos+33:pos+33+name_len].decode('ascii', 'ignore').split(';')[0]
+            
+            if name and name not in ['\x00', '\x01']:
+                target = os.path.join(current_out, name)
+                if file_flags & 0x02: # Directory
+                    # Need to be careful with recursion in CD-i
+                    curr_pos = f.tell()
+                    self._extract_dir(f, extent_loc, data_len, target)
+                    f.seek(curr_pos)
+                else:
+                    curr_pos = f.tell()
+                    f.seek(extent_loc * 2048)
+                    with open(target, "wb") as out_f: out_f.write(f.read(data_len))
+                    f.seek(curr_pos)
+            pos += rec_len
 
 def translate_string(input_str):
     try:
@@ -104,35 +171,31 @@ def translate_string(input_str):
         result = sys.stdout.getvalue().strip()
         sys.stdout = old_stdout
         return result
-    except:
-        return "Error decoding"
+    except: return "Error decoding"
 
 def process_task_advanced(command, filename, extra_args_list):
     old_stdout, old_stderr = sys.stdout, sys.stderr
     captured_output = io.StringIO()
     sys.stdout = sys.stderr = captured_output
-
     try:
         base_dir = '/home/pyodide'
         script_path = os.path.join(base_dir, 'dumper-companion.py')
         output_dir = os.path.join(base_dir, 'virtual_out')
-        
-        if os.path.exists(output_dir):
-            shutil.rmtree(output_dir)
+        if os.path.exists(output_dir): shutil.rmtree(output_dir)
         os.makedirs(output_dir, exist_ok=True)
         
-        # 3DO Detection Logic
-        opera = OperaFS(filename, output_dir)
-        if command == 'iso' and opera.detect():
-            opera.extract()
-            print("\n✅ Ritual of Opera FS Complete. All artifacts secured.")
-            return captured_output.getvalue()
-
-        # Fallback to ScummVM Dumper Companion
-        if not os.path.exists(script_path):
-            print(f"!! CRITICAL: The Sacred Script (dumper-companion.py) is missing at {script_path}")
-            return captured_output.getvalue()
+        handler = UniversalCDHandler(filename, output_dir)
+        fmt_name = handler.detect_format()
+        print(f"The Oracle perceives: {fmt_name}")
         
+        if command == 'iso':
+            result = handler.extract()
+            if result is True:
+                print(f"\n✅ {fmt_name} Extraction Complete.")
+                return captured_output.getvalue()
+            elif isinstance(result, str):
+                filename = result # Use the temp Mode 1 ISO
+
         args = ['dumper-companion.py', command]
         args.extend(extra_args_list)
         if command in ['iso', 'createmacfonts']:
@@ -141,17 +204,9 @@ def process_task_advanced(command, filename, extra_args_list):
             args.append(filename)
         
         sys.argv = args
-        print(f"Informing the Oracle: {' '.join(sys.argv)}")
-        print("-" * 50)
+        print(f"Invoking ScummVM Ritual: {' '.join(sys.argv)}")
         runpy.run_path(script_path, run_name='__main__')
         
-    except IndexError as e:
-        if "list index out of range" in str(e):
-            print("\n[THE ORACLE IS CONFUSED]")
-            print("Error: No valid ISO9660 or HFS filesystem detected.")
-            print("Hint: If this is a 3DO game, ensure the image is not corrupted.")
-        else:
-            traceback.print_exc()
     except Exception:
         print("\n[THE ORACLE HAS ENCOUNTERED A VISION ERROR]")
         traceback.print_exc()

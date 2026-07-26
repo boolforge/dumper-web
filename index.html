@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScummVM :: Dumper Companion Web - Ultimate Preserver Edition</title>
+    <title>ScummVM :: Dumper Companion Web - Universal Console Edition</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -116,7 +116,7 @@
                 <img src="https://www.scummvm.org/images/maniac-half.png" alt="Maniac Mansion" class="logo-maniac">
                 <div class="title-box">
                     <h1 class="main-title">Dumper Companion</h1>
-                    <span class="sub-title">Ultimate Preserver Edition - 3DO & Console Master</span>
+                    <span class="sub-title">Universal Console Edition - PSX, Saturn, 3DO, CD-i & More</span>
                 </div>
             </div>
             <div class="scummvm-tag">
@@ -132,11 +132,11 @@
                 <dd>
                     <div class="bullet-row"><span class="bullet"></span><strong>Command</strong></div>
                     <select id="cmd-select">
-                        <option value="iso">iso - Full Extraction</option>
+                        <option value="iso">iso - Universal Extraction</option>
                         <option value="probe">probe - Divine Metadata</option>
                         <option value="createmacfonts">macfonts - Font Ritual</option>
                     </select>
-                    <div class="pedagogical-hint">3DO Opera FS is automatically detected by the Oracle.</div>
+                    <div class="pedagogical-hint">Now supporting PSX, Saturn, 3DO, and CD-i (Green Book).</div>
                 </dd>
             </dl>
 
@@ -174,25 +174,27 @@
         <main>
             <div class="round-container">
                 <div class="round-container-header">
-                    <span>The Ultimate Workbench</span>
+                    <span>Universal Preserver Workbench</span>
                 </div>
                 <div class="round-container-content">
-                    <h2 style="margin-top: 0; color: var(--link);">Preserve the History!</h2>
+                    <h2 style="margin-top: 0; color: var(--link);">The Ultimate Console Companion!</h2>
                     <p style="font-size: 0.95rem; line-height: 1.6;">
-                        Welcome to the **Ultimate Preserver Edition**. This version features a robust **3DO Opera FS** parser capable of handling both standard (2048) and RAW (2352) sector images.
+                        Welcome to the **Universal Console Edition**. The Oracle has been trained to recognize and extract data from a wide variety of ancient console CD formats.
                     </p>
                     
                     <div style="background: #fff; border: 3px dashed var(--link); padding: 25px; border-radius: 10px; margin: 25px 0; text-align: center;">
-                        <h4 style="margin-top: 0; color: var(--link);">Place your Offering here:</h4>
+                        <h4 style="margin-top: 0; color: var(--link);">Place your Console Offering here:</h4>
                         <input type="file" id="file-in" style="display: none;">
                         <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
                     </div>
 
                     <div id="troubleshooting" style="margin-top: 20px; background: #fff5c6; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; font-size: 0.85rem;">
-                        <strong style="color: var(--link);">💡 Master Preserver Tips</strong>
+                        <strong style="color: var(--link);">💡 Universal Console Tips</strong>
                         <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-                            <li><strong>Rebel Assault (3DO):</strong> Use the .iso or .bin file. The Oracle now supports RAW sector offsets automatically.</li>
-                            <li><strong>Empty ZIP?</strong> If no files are extracted, ensure the image is a valid data track and not just an audio track.</li>
+                            <li><strong>PSX & Saturn:</strong> RAW (.bin) images are supported. The Oracle will automatically strip XA headers to find the artifacts.</li>
+                            <li><strong>Philips CD-i:</strong> Experimental Green Book support is now active. Arrive with your .iso or .bin offering.</li>
+                            <li><strong>3DO:</strong> Continued robust support for Opera FileSystem images.</li>
+                            <li><strong>PC-Engine:</strong> Sube la pista de datos (Data Track) de tu volcado de CD.</li>
                         </ul>
                     </div>
                 </div>
@@ -215,8 +217,8 @@
     </div>
 
     <footer>
-        &copy; 2026 ScummVM Team. Ultimate Preserver Edition.<br>
-        "I'm Guybrush Threepwood, a mighty preserver!"
+        &copy; 2026 ScummVM Team. Universal Console Edition.<br>
+        "Look behind you, a three-headed console dumper!"
     </footer>
 </div>
 
@@ -263,13 +265,13 @@
             const code = await resp.text();
             pyodide.FS.writeFile('/home/pyodide/dumper-companion.py', code);
 
-            log("> Preparing the Ultimate Console Bridge...", "system");
+            log("> Preparing the Universal Console Bridge...", "system");
             const wrapperResp = await fetch('wrapper.py');
             const wrapperCode = await wrapperResp.text();
             pyodide.FS.writeFile('/home/pyodide/wrapper.py', wrapperCode);
             await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import wrapper");
 
-            log("✅ The Oracle has awakened. Ultimate Support active.", "system");
+            log("✅ The Oracle has awakened. Universal Console Support active.", "system");
             statusText.textContent = "ORACLE READY";
             statusText.style.color = "var(--menu-title)";
             runBtn.disabled = false;
@@ -317,9 +319,9 @@
         }
         const blob = await zip.generateAsync({type: "blob"});
         dlLink.href = URL.createObjectURL(blob);
-        dlLink.download = "scummvm_ultimate_dump_" + Date.now() + ".zip";
+        dlLink.download = "scummvm_universal_dump_" + Date.now() + ".zip";
         dlPanel.style.display = "block";
-        log("✅ The Ultimate Artifacts are ready for download.", "system");
+        log("✅ The Universal Artifacts are ready for download.", "system");
     }
 
     runBtn.addEventListener('click', () => fileIn.click());
