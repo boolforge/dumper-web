@@ -7,67 +7,90 @@ import shutil
 import struct
 
 class OperaFS:
-    """Minimalist 3DO Opera FileSystem Parser"""
+    """Robust 3DO Opera FileSystem Parser based on Portfolio OS specs"""
     def __init__(self, iso_path, output_dir):
         self.iso_path = iso_path
         self.output_dir = output_dir
         self.block_size = 2048
+        self.sector_offset = 0
 
-    def is_3do(self):
+    def detect(self):
         try:
             with open(self.iso_path, "rb") as f:
+                # Try standard offset (2048)
+                f.seek(0)
                 sig = f.read(7)
-                return sig == b'\x01ZZZZZ\x01'
+                if sig == b'\x01ZZZZZ\x01':
+                    self.block_size = 2048
+                    self.sector_offset = 0
+                    return True
+                
+                # Try RAW offset (2352) - Data usually starts at 16 or 24 bytes in
+                f.seek(16)
+                sig = f.read(7)
+                if sig == b'\x01ZZZZZ\x01':
+                    self.block_size = 2352
+                    self.sector_offset = 16
+                    return True
+                
+                return False
         except:
             return False
 
     def extract(self):
-        print("Detected 3DO Opera FileSystem. Commencing specialized ritual...")
+        print(f"Detected 3DO Opera FileSystem (Block Size: {self.block_size}).")
         with open(self.iso_path, "rb") as f:
-            # Volume Header (Block 0)
-            f.seek(104)
+            # Volume Header is in Block 0
+            f.seek(self.sector_offset + 104)
             root_block = struct.unpack(">I", f.read(4))[0]
             root_size = struct.unpack(">I", f.read(4))[0]
-            print(f"Root Directory found at block {root_block} ({root_size} bytes)")
             
-            self._extract_dir(f, root_block, self.output_dir)
+            print(f"Manifesting Root Sanctum at block {root_block}...")
+            self._extract_node(f, root_block, self.output_dir)
 
-    def _extract_dir(self, f, block, current_out):
+    def _extract_node(self, f, block, current_out):
         if not os.path.exists(current_out):
             os.makedirs(current_out, exist_ok=True)
             
-        f.seek(block * self.block_size)
-        # Directory Header
-        # 0x00: flags (4 bytes)
-        # 0x04: first free byte (4 bytes)
-        # 0x08: num entries (4 bytes)
-        f.seek(8, 1) 
-        num_entries = struct.unpack(">I", f.read(4))[0]
+        # Read Directory Header
+        f.seek(block * self.block_size + self.sector_offset)
+        dir_header = f.read(20)
+        if len(dir_header) < 20: return
         
-        entries = []
-        for _ in range(num_entries):
-            # Directory Entry
-            entry_data = f.read(72) # Standard entry size
+        # Directory Header Structure:
+        # 0-3: anchor, 4-7: next_dir, 8-11: prev_dir, 12-15: first_free, 16-19: num_entries
+        num_entries = struct.unpack(">I", dir_header[16:20])[0]
+        
+        # Entries start right after header (20 bytes)
+        for i in range(num_entries):
+            # Each entry is 72 bytes
+            f.seek(block * self.block_size + self.sector_offset + 20 + (i * 72))
+            entry_data = f.read(72)
             if len(entry_data) < 72: break
             
             flags = struct.unpack(">I", entry_data[0:4])[0]
             id = struct.unpack(">I", entry_data[4:8])[0]
             offset = struct.unpack(">I", entry_data[16:20])[0]
             size = struct.unpack(">I", entry_data[20:24])[0]
-            name = entry_data[32:64].split(b'\x00')[0].decode('ascii', 'ignore')
+            # Name is at offset 32, max 32 chars
+            name_bytes = entry_data[32:64].split(b'\x00')[0]
+            try:
+                name = name_bytes.decode('ascii', 'ignore').strip()
+            except:
+                name = f"unknown_{i}"
             
-            if name and name not in ['.', '..']:
-                entries.append({'name': name, 'offset': offset, 'size': size, 'is_dir': bool(flags & 0x02)})
-
-        for entry in entries:
-            target = os.path.join(current_out, entry['name'])
-            if entry['is_dir']:
-                print(f"Entering directory: {entry['name']}")
-                self._extract_dir(f, entry['offset'], target)
+            if not name or name in ['.', '..']: continue
+            
+            target = os.path.join(current_out, name)
+            is_dir = bool(flags & 0x02) # Directory flag in Opera FS
+            
+            if is_dir:
+                print(f" -> Entering Chamber: {name}")
+                self._extract_node(f, offset, target)
             else:
-                print(f"Extracting: {entry['name']} ({entry['size']} bytes)")
-                f.seek(entry['offset'] * self.block_size)
-                data = f.read(entry['size'])
+                print(f" -> Recovering Artifact: {name} ({size} bytes)")
+                f.seek(offset * self.block_size + self.sector_offset)
+                data = f.read(size)
                 with open(target, "wb") as out_f:
                     out_f.write(data)
 
@@ -100,14 +123,14 @@ def process_task_advanced(command, filename, extra_args_list):
         
         # 3DO Detection Logic
         opera = OperaFS(filename, output_dir)
-        if command == 'iso' and opera.is_3do():
+        if command == 'iso' and opera.detect():
             opera.extract()
-            print("\n✅ 3DO Extraction Complete.")
+            print("\n✅ Ritual of Opera FS Complete. All artifacts secured.")
             return captured_output.getvalue()
 
         # Fallback to ScummVM Dumper Companion
         if not os.path.exists(script_path):
-            print(f"!! CRITICAL: Script not found at {script_path}")
+            print(f"!! CRITICAL: The Sacred Script (dumper-companion.py) is missing at {script_path}")
             return captured_output.getvalue()
         
         args = ['dumper-companion.py', command]
@@ -118,15 +141,15 @@ def process_task_advanced(command, filename, extra_args_list):
             args.append(filename)
         
         sys.argv = args
-        print(f"Running Command: {' '.join(sys.argv)}")
+        print(f"Informing the Oracle: {' '.join(sys.argv)}")
         print("-" * 50)
         runpy.run_path(script_path, run_name='__main__')
         
     except IndexError as e:
         if "list index out of range" in str(e):
             print("\n[THE ORACLE IS CONFUSED]")
-            print("Error: The dumper could not detect a valid ISO9660 or HFS filesystem.")
-            print("Note: If this is a 3DO game, the experimental Opera FS parser should have caught it.")
+            print("Error: No valid ISO9660 or HFS filesystem detected.")
+            print("Hint: If this is a 3DO game, ensure the image is not corrupted.")
         else:
             traceback.print_exc()
     except Exception:

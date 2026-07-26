@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScummVM :: Dumper Companion Web - Console Edition</title>
+    <title>ScummVM :: Dumper Companion Web - Ultimate Preserver Edition</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -94,7 +94,6 @@
         .console { color: #00ff41; font-family: "Lucida Console", "Monaco", monospace; font-size: 13px; padding: 25px; height: 450px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; }
         .console-sys { color: var(--menu-title); font-weight: bold; }
         .console-err { color: #ff4444; font-weight: bold; }
-        .console-humor { color: #55aaff; font-style: italic; }
 
         .utility-panel { background-color: #fdf6e3; border: 2px solid var(--border-color); border-radius: 8px; padding: 20px; margin-top: 25px; }
         .utility-panel h4 { margin: 0 0 12px 0; font-size: 1rem; color: var(--link); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; }
@@ -117,7 +116,7 @@
                 <img src="https://www.scummvm.org/images/maniac-half.png" alt="Maniac Mansion" class="logo-maniac">
                 <div class="title-box">
                     <h1 class="main-title">Dumper Companion</h1>
-                    <span class="sub-title">Console Edition - 3DO, ISO, HFS & More</span>
+                    <span class="sub-title">Ultimate Preserver Edition - 3DO & Console Master</span>
                 </div>
             </div>
             <div class="scummvm-tag">
@@ -131,14 +130,13 @@
             <dl>
                 <dt>Step 1: The Ritual</dt>
                 <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Choose Command</strong><span class="info-tag" title="Decide what the Oracle should do with your offering.">?</span></div>
+                    <div class="bullet-row"><span class="bullet"></span><strong>Command</strong></div>
                     <select id="cmd-select">
                         <option value="iso">iso - Full Extraction</option>
                         <option value="probe">probe - Divine Metadata</option>
                         <option value="createmacfonts">macfonts - Font Ritual</option>
-                        <option value="dir">dir - Punyencode Dir</option>
                     </select>
-                    <div class="pedagogical-hint">"ISO" now supports experimental 3DO (Opera FS) extraction!</div>
+                    <div class="pedagogical-hint">3DO Opera FS is automatically detected by the Oracle.</div>
                 </dd>
             </dl>
 
@@ -147,7 +145,6 @@
                 <dd>
                     <div class="bullet-row"><span class="bullet"></span><strong>Encoding</strong></div>
                     <input type="text" id="enc-input" placeholder="e.g. mac_roman">
-                    <div class="pedagogical-hint">For console games, the Oracle usually handles names automatically.</div>
                 </dd>
                 <dd>
                     <div class="bullet-row"><span class="bullet"></span><strong>Modes</strong></div>
@@ -177,28 +174,25 @@
         <main>
             <div class="round-container">
                 <div class="round-container-header">
-                    <span>The Oracle's Workbench</span>
-                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.7;">Console Edition v2.0</span>
+                    <span>The Ultimate Workbench</span>
                 </div>
                 <div class="round-container-content">
-                    <h2 style="margin-top: 0; color: var(--link);">Greetings, Console Explorer!</h2>
+                    <h2 style="margin-top: 0; color: var(--link);">Preserve the History!</h2>
                     <p style="font-size: 0.95rem; line-height: 1.6;">
-                        This version of the <strong>Dumper Companion</strong> has been enhanced with experimental support for <strong>3DO (Opera FileSystem)</strong>. It can also handle standard ISO9660 images used by Saturn, PSX, and PC-Engine.
+                        Welcome to the **Ultimate Preserver Edition**. This version features a robust **3DO Opera FS** parser capable of handling both standard (2048) and RAW (2352) sector images.
                     </p>
                     
                     <div style="background: #fff; border: 3px dashed var(--link); padding: 25px; border-radius: 10px; margin: 25px 0; text-align: center;">
-                        <h4 style="margin-top: 0; color: var(--link);">Place your Console Offering here:</h4>
+                        <h4 style="margin-top: 0; color: var(--link);">Place your Offering here:</h4>
                         <input type="file" id="file-in" style="display: none;">
                         <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
-                        <p style="font-size: 0.75rem; color: #666; margin: 15px 0 0 0;">Supported: .iso, .bin (Data Track), .img. Multi-track BIN/CUE should be converted to ISO first.</p>
                     </div>
 
                     <div id="troubleshooting" style="margin-top: 20px; background: #fff5c6; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; font-size: 0.85rem;">
-                        <strong style="color: var(--link);">💡 Console Dumping Tips</strong>
+                        <strong style="color: var(--link);">💡 Master Preserver Tips</strong>
                         <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-                            <li><strong>3DO Games:</strong> Arrastra el archivo .iso o .bin. El Oráculo detectará automáticamente el sistema de archivos Opera.</li>
-                            <li><strong>PSX/Saturn:</strong> Si tienes un BIN/CUE, sube solo el archivo .bin de la pista de datos (normalmente el más grande).</li>
-                            <li><strong>PC-Engine:</strong> Algunos discos usan sectores de 2352 bytes. Si la extracción falla, intenta convertir la imagen a un formato ISO estándar de 2048 bytes/sector.</li>
+                            <li><strong>Rebel Assault (3DO):</strong> Use the .iso or .bin file. The Oracle now supports RAW sector offsets automatically.</li>
+                            <li><strong>Empty ZIP?</strong> If no files are extracted, ensure the image is a valid data track and not just an audio track.</li>
                         </ul>
                     </div>
                 </div>
@@ -221,8 +215,8 @@
     </div>
 
     <footer>
-        &copy; 2026 ScummVM Team. Enhanced for Consoles with love.<br>
-        "I'm Guybrush Threepwood, a mighty console dumper!"
+        &copy; 2026 ScummVM Team. Ultimate Preserver Edition.<br>
+        "I'm Guybrush Threepwood, a mighty preserver!"
     </footer>
 </div>
 
@@ -246,7 +240,6 @@
         const div = document.createElement('div');
         if (type === 'system') div.className = 'console-sys';
         if (type === 'stderr') div.className = 'console-err';
-        if (type === 'humor') div.className = 'console-humor';
         div.textContent = text;
         consoleDiv.appendChild(div);
         consoleDiv.scrollTop = consoleDiv.scrollHeight;
@@ -270,13 +263,13 @@
             const code = await resp.text();
             pyodide.FS.writeFile('/home/pyodide/dumper-companion.py', code);
 
-            log("> Preparing the Universal Console Bridge...", "system");
+            log("> Preparing the Ultimate Console Bridge...", "system");
             const wrapperResp = await fetch('wrapper.py');
             const wrapperCode = await wrapperResp.text();
             pyodide.FS.writeFile('/home/pyodide/wrapper.py', wrapperCode);
             await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import wrapper");
 
-            log("✅ The Oracle has awakened. Console support active.", "system");
+            log("✅ The Oracle has awakened. Ultimate Support active.", "system");
             statusText.textContent = "ORACLE READY";
             statusText.style.color = "var(--menu-title)";
             runBtn.disabled = false;
@@ -311,17 +304,22 @@
             }
         }
         walk(outPath);
-        if (files.length === 0) return;
+        
+        if (files.length === 0) {
+            log("!! No artifacts found in the Manifestation Chamber.", "stderr");
+            return;
+        }
 
+        log(`> Packing ${files.length} artifacts into a ZIP...`, "system");
         const zip = new JSZip();
         for (const f of files) {
             zip.file(f.replace(outPath + "/", ""), pyodide.FS.readFile(f));
         }
         const blob = await zip.generateAsync({type: "blob"});
         dlLink.href = URL.createObjectURL(blob);
-        dlLink.download = "scummvm_console_dump_" + Date.now() + ".zip";
+        dlLink.download = "scummvm_ultimate_dump_" + Date.now() + ".zip";
         dlPanel.style.display = "block";
-        log("✅ The Console Artifacts are ready.", "system");
+        log("✅ The Ultimate Artifacts are ready for download.", "system");
     }
 
     runBtn.addEventListener('click', () => fileIn.click());
@@ -354,7 +352,7 @@ wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.str
             if (cmd === 'iso' || cmd === 'createmacfonts') await prepareDownload();
             log("--- Ritual Complete ---", "system");
         } catch (err) {
-            log("!! Vision error: " + err.message, "stderr");
+            log("!! Ritual failed: " + err.message, "stderr");
         } finally {
             runBtn.disabled = false;
             runBtn.textContent = "BEGIN THE EXTRACTION RITUAL";
