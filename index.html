@@ -19,17 +19,21 @@
             --success-bg: #e8f5e9;
         }
 
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
             background-color: var(--scumm-orange);
             color: var(--text-dark);
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         #wrapper {
             max-width: 980px;
+            width: 100%;
             margin: 30px auto;
             background-color: var(--bg-light);
             border-radius: 12px;
@@ -102,7 +106,21 @@
             padding: 25px;
         }
 
+        .offering-box {
+            background-color: #faf9f6;
+            border: 3px dashed var(--scumm-orange);
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
         @media (max-width: 768px) {
+            #wrapper {
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
             .main-content {
                 grid-template-columns: 1fr;
                 padding: 15px;
@@ -118,6 +136,36 @@
             }
             .main-title {
                 font-size: 1.6rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header {
+                padding: 10px 5px;
+            }
+            .main-title {
+                font-size: 1.3rem;
+            }
+            .sub-title {
+                font-size: 0.8rem;
+            }
+            .oracle-status {
+                font-size: 0.8rem;
+                padding: 5px 10px;
+                width: 100%;
+            }
+            .main-content {
+                padding: 10px;
+            }
+            .panel {
+                padding: 15px;
+            }
+            .btn-scumm {
+                padding: 12px 15px;
+                font-size: 0.9rem;
+            }
+            .offering-box {
+                padding: 15px;
             }
         }
 
@@ -403,7 +451,7 @@
                     This web workbench executes the official ScummVM dumper utility entirely in your web browser via WebAssembly. No data is uploaded to any server.
                 </p>
 
-                <div style="background-color: #faf9f6; border: 3px dashed var(--scumm-orange); padding: 30px; border-radius: 10px; max-width: 500px; margin: 0 auto;">
+                <div class="offering-box">
                     <h3 style="margin-top: 0; color: var(--scumm-orange); font-size: 1.1rem;">Place your Offering here</h3>
                     <input type="file" id="file-in" style="display: none;">
                     <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
