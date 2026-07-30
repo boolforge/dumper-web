@@ -3,221 +3,441 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScummVM :: Dumper Companion Web - Universal Console Edition</title>
+    <title>ScummVM :: Dumper Companion Web</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
-            --background: rgb(204, 102, 0);
-            --text: rgb(0, 0, 0);
-            --link: rgb(130, 29, 6);
-            --wrapper-topper: rgb(246, 224, 138);
-            --wrapper-background: rgb(251, 241, 206);
-            --menu-title-background: rgb(130, 29, 6);
-            --menu-background: rgb(168, 39, 9);
-            --menu-title: rgb(221, 221, 0);
-            --bullet-color: rgb(251, 241, 206);
-            --border-color: rgb(228, 186, 155);
-            --success-green: #406a04;
+            --scumm-orange: #c60;
+            --scumm-dark-orange: #a50;
+            --scumm-dark-red: #821d06;
+            --scumm-yellow: #ffcc00;
+            --bg-light: #f5f5f3;
+            --text-dark: #2c2c2c;
+            --border-color: #d1d1cf;
+            --success-green: #2e7d32;
+            --success-bg: #e8f5e9;
         }
 
         body {
-            font-family: "Verdana", "Tahoma", sans-serif;
-            background-color: var(--background);
-            color: var(--text);
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column; align-items: center;
+            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+            background-color: var(--scumm-orange);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        #wrapper { 
-            width: 100%; 
-            max-width: 1050px; 
-            margin: 20px auto; 
-            display: flex; 
-            flex-direction: column; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        #wrapper {
+            max-width: 980px;
+            margin: 30px auto;
+            background-color: var(--bg-light);
             border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        header { width: 100%; }
-        .row.topper {
-            background-color: var(--wrapper-topper);
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 20px 30px; border-bottom: 3px solid var(--border-color);
+        header {
+            background-color: var(--scumm-dark-red);
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 4px solid var(--scumm-yellow);
+            flex-wrap: wrap;
+            gap: 15px;
         }
-        .header-left { display: flex; align-items: center; gap: 25px; }
-        .logo-maniac { height: 80px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2)); }
-        .title-box { display: flex; flex-direction: column; }
-        .main-title { 
-            color: var(--link); 
-            font-size: 2.2rem; 
-            margin: 0; 
-            font-weight: 900; 
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-img {
+            height: 70px;
+            width: auto;
+        }
+
+        .title-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-title {
+            color: var(--scumm-yellow);
+            font-size: 2.2rem;
+            margin: 0;
+            font-weight: bold;
+            font-family: "Courier New", Courier, monospace;
+            text-transform: uppercase;
             letter-spacing: -1px;
-            text-shadow: 1px 1px 0px white;
         }
-        .sub-title { color: var(--menu-background); font-weight: bold; font-size: 1rem; margin-top: -5px; }
+
+        .sub-title {
+            color: #fff;
+            font-weight: bold;
+            font-size: 0.95rem;
+            margin-top: 2px;
+        }
+
+        .oracle-status {
+            background-color: rgba(0, 0, 0, 0.4);
+            border: 2px solid var(--scumm-yellow);
+            border-radius: 6px;
+            padding: 8px 15px;
+            font-family: monospace;
+            color: var(--scumm-yellow);
+            font-weight: bold;
+            text-align: center;
+            font-size: 0.9rem;
+        }
 
         .main-content {
-            display: grid; grid-template-columns: 240px 1fr; gap: 30px;
-            padding: 30px; background-color: var(--wrapper-background);
-            min-height: 800px;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            padding: 25px;
         }
 
-        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } }
-
-        nav dl { background-color: var(--menu-background); border: 2px solid var(--menu-title-background); border-radius: 8px; margin-bottom: 30px; color: white; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); }
-        nav dt { background-color: var(--menu-title-background); color: var(--menu-title); padding: 12px 15px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        nav dd { margin: 0; padding: 12px 15px; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px; }
-        nav dd .bullet-row { display: flex; align-items: center; gap: 10px; }
-        nav dd .bullet { width: 10px; height: 10px; background-color: var(--bullet-color); border-radius: 50%; display: inline-block; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5); }
-        
-        .pedagogical-hint { font-size: 0.7rem; color: rgba(255,255,255,0.85); font-style: italic; line-height: 1.3; border-left: 2px solid var(--wrapper-topper); padding-left: 8px; margin-top: 4px; }
-
-        .round-container { background-color: white; border: 2px solid var(--border-color); border-radius: 12px; margin-bottom: 30px; overflow: hidden; box-shadow: 4px 4px 10px rgba(0,0,0,0.1); }
-        .round-container-header { background-color: var(--wrapper-topper); padding: 15px 25px; font-weight: bold; color: var(--link); font-size: 1.1rem; border-bottom: 2px solid var(--border-color); }
-        .round-container-content { padding: 25px; }
-
-        select, input[type="text"] { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 0.95rem; }
-        
-        .btn-scumm { 
-            background-color: var(--link); color: white; border: none; padding: 18px 30px; border-radius: 8px; 
-            font-weight: bold; cursor: pointer; width: 100%; font-size: 1.1rem; text-transform: uppercase; 
-            box-shadow: 0 4px 0px #5a1403; transition: all 0.1s;
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                padding: 15px;
+            }
+            header {
+                justify-content: center;
+                text-align: center;
+                padding: 15px;
+            }
+            .header-left {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .main-title {
+                font-size: 1.6rem;
+            }
         }
-        .btn-scumm:hover { background-color: var(--menu-background); transform: translateY(-1px); box-shadow: 0 5px 0px #5a1403; }
-        .btn-scumm:active { transform: translateY(3px); box-shadow: 0 1px 0px #5a1403; }
-        .btn-scumm:disabled { background-color: #999; box-shadow: 0 4px 0px #666; cursor: not-allowed; transform: none; }
 
-        .console-box { background-color: #0c0c0c; border-radius: 8px; border: 4px solid #333; position: relative; }
-        .console { color: #00ff41; font-family: "Lucida Console", "Monaco", monospace; font-size: 13px; padding: 25px; height: 450px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; }
-        .console-sys { color: var(--menu-title); font-weight: bold; }
-        .console-err { color: #ff4444; font-weight: bold; }
+        .panel {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
 
-        .utility-panel { background-color: #fdf6e3; border: 2px solid var(--border-color); border-radius: 8px; padding: 20px; margin-top: 25px; }
-        .utility-panel h4 { margin: 0 0 12px 0; font-size: 1rem; color: var(--link); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; }
+        .panel h3 {
+            margin-top: 0;
+            color: var(--scumm-dark-red);
+            border-bottom: 2px solid var(--scumm-orange);
+            padding-bottom: 8px;
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-        .download-box { display: none; background-color: #f1f8e9; border: 3px solid var(--success-green); padding: 30px; border-radius: 12px; text-align: center; margin-top: 25px; }
+        .form-group {
+            margin-bottom: 15px;
+        }
 
-        footer { background-color: var(--wrapper-background); padding: 40px; text-align: center; font-size: 0.85rem; border-top: 3px solid var(--border-color); color: #444; line-height: 1.6; }
-        .monkey-box { text-align: right; padding: 15px; }
-        .monkey { height: 60px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1)); }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            color: #555;
+        }
 
-        .info-tag { background: var(--link); color: white; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; cursor: help; margin-left: 5px; vertical-align: middle; }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input[type="text"]:focus {
+            border-color: var(--scumm-orange);
+            outline: none;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .checkbox-group input {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+            margin: 0;
+        }
+
+        .btn-scumm {
+            background-color: var(--scumm-orange);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            text-transform: uppercase;
+            box-shadow: 0 4px 0 var(--scumm-dark-orange);
+            transition: all 0.1s;
+            box-sizing: border-box;
+        }
+
+        .btn-scumm:hover:not(:disabled) {
+            background-color: var(--scumm-dark-orange);
+        }
+
+        .btn-scumm:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 var(--scumm-dark-orange);
+        }
+
+        .btn-scumm:disabled {
+            background-color: #b0bec5;
+            box-shadow: 0 4px 0 #90a4ae;
+            cursor: not-allowed;
+            color: #eceff1;
+        }
+
+        .console-container {
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            border: 2px solid #333;
+            overflow: hidden;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .console-header {
+            background-color: #2b2b2b;
+            padding: 8px 15px;
+            color: #aaa;
+            font-family: monospace;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .console {
+            color: #33ff33;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 13px;
+            padding: 15px;
+            height: 380px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .console-sys {
+            color: #00e5ff;
+            font-weight: bold;
+        }
+
+        .console-err {
+            color: #ff3d00;
+            font-weight: bold;
+        }
+
+        .download-box {
+            display: none;
+            background-color: var(--success-bg);
+            border: 2px solid var(--success-green);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .download-box h3 {
+            color: var(--success-green);
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+        }
+
+        .download-btn {
+            background-color: var(--success-green);
+            box-shadow: 0 4px 0 #1b5e20;
+            display: inline-block;
+            width: auto;
+            padding: 12px 30px;
+        }
+
+        .download-btn:hover {
+            background-color: #1b5e20;
+        }
+
+        .download-btn:active {
+            box-shadow: 0 2px 0 #1b5e20;
+        }
+
+        .info-card {
+            background-color: #fff9e6;
+            border-left: 4px solid var(--scumm-orange);
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #555;
+            margin-top: 15px;
+        }
+
+        .info-card strong {
+            color: var(--scumm-dark-red);
+        }
+
+        footer {
+            background-color: #eee;
+            padding: 25px;
+            text-align: center;
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border-color);
+            color: #666;
+            line-height: 1.5;
+        }
+
+        footer a {
+            color: var(--scumm-dark-red);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
 
 <div id="wrapper">
     <header>
-        <div class="row topper">
-            <div class="header-left">
-                <img src="https://www.scummvm.org/images/maniac-half.png" alt="Maniac Mansion" class="logo-maniac">
-                <div class="title-box">
-                    <h1 class="main-title">Dumper Companion</h1>
-                    <span class="sub-title">Universal Console Edition - PSX, Saturn, 3DO, CD-i & More</span>
-                </div>
+        <div class="header-left">
+            <img src="https://www.scummvm.org/images/scummvm_logo.png" alt="ScummVM Logo" class="logo-img">
+            <div class="title-container">
+                <h1 class="main-title">Dumper Companion</h1>
+                <span class="sub-title">Macintosh HFS, ISO9660 & 3DO CD-ROM Web Extractor</span>
             </div>
-            <div class="scummvm-tag">
-                Script Creation Utility for<br>Maniac Mansion Virtual Machine
-            </div>
+        </div>
+        <div class="oracle-status" id="status-text">
+            AWAKENING THE ORACLE...
         </div>
     </header>
 
     <div class="main-content">
-        <nav>
-            <dl>
-                <dt>Step 1: The Ritual</dt>
-                <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Command</strong></div>
+        <!-- Sidebar containing inputs & settings -->
+        <aside>
+            <div class="panel">
+                <h3>📖 Step 1: The Ritual</h3>
+                <div class="form-group">
+                    <label for="cmd-select">Select Extraction Rite:</label>
                     <select id="cmd-select">
-                        <option value="iso">iso - Universal Extraction</option>
-                        <option value="probe">probe - Divine Metadata</option>
-                        <option value="createmacfonts">macfonts - Font Ritual</option>
+                        <option value="iso">iso - Extract Files</option>
+                        <option value="probe">probe - Probe Metadata</option>
+                        <option value="createmacfonts">macfonts - Retrieve Classic Fonts</option>
                     </select>
-                    <div class="pedagogical-hint">Now supporting PSX, Saturn, 3DO, and CD-i (Green Book).</div>
-                </dd>
-            </dl>
-
-            <dl>
-                <dt>Step 2: Ancient Settings</dt>
-                <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Encoding</strong></div>
-                    <input type="text" id="enc-input" placeholder="e.g. mac_roman">
-                </dd>
-                <dd>
-                    <div class="bullet-row"><span class="bullet"></span><strong>Modes</strong></div>
-                    <div class="bullet-row"><input type="checkbox" id="chk-jp"> <span style="font-size: 0.8rem;">Japanese Mode</span></div>
-                    <div class="bullet-row" style="margin-top: 8px;"><input type="checkbox" id="chk-no-puny" checked> <span style="font-size: 0.8rem;">Punyencode Names</span></div>
-                </dd>
-            </dl>
-
-            <dl>
-                <dt>The Oracle's Pulse</dt>
-                <dd>
-                    <div class="bullet-row"><span class="bullet"></span><span id="status-text" style="font-weight: bold; color: var(--menu-title);">Waking up...</span></div>
-                </dd>
-            </dl>
-
-            <div class="utility-panel">
-                <h4>🔤 Punycode Translator</h4>
-                <input type="text" id="puny-input" placeholder="Enter xn--... or text">
-                <div id="puny-result" style="margin-top: 12px; font-size: 0.75rem; font-family: monospace; word-break: break-all; color: var(--link); font-weight: bold;"></div>
+                </div>
             </div>
 
-            <div class="monkey-box">
-                <img src="https://www.scummvm.org/images/hangmonk.gif" alt="Monkey" class="monkey">
-            </div>
-        </nav>
+            <div class="panel">
+                <h3>⚙️ Step 2: Ancient Settings</h3>
+                <div class="form-group">
+                    <label for="enc-input">Volume Encoding (Optional):</label>
+                    <input type="text" id="enc-input" placeholder="e.g. mac_roman, shift_jis">
+                </div>
 
+                <label class="checkbox-group">
+                    <input type="checkbox" id="chk-jp">
+                    <span>Japanese Encoding (--japanese)</span>
+                </label>
+
+                <label class="checkbox-group">
+                    <input type="checkbox" id="chk-no-puny" checked>
+                    <span>Punyencode Filenames (Recommended)</span>
+                </label>
+
+                <label class="checkbox-group">
+                    <input type="checkbox" id="chk-macbinary">
+                    <span>Force MacBinary (--forcemacbinary)</span>
+                </label>
+            </div>
+
+            <div class="panel">
+                <h3>🔤 Punycode Translator</h3>
+                <div class="form-group">
+                    <label for="puny-input">Punycode (xn--) or Text:</label>
+                    <input type="text" id="puny-input" placeholder="Translate name...">
+                </div>
+                <div id="puny-result" style="font-family: monospace; font-size: 0.8rem; word-break: break-all; color: var(--scumm-dark-red); font-weight: bold; background: #fafafa; padding: 8px; border-radius: 4px; border: 1px dashed var(--border-color); min-height: 20px;"></div>
+            </div>
+        </aside>
+
+        <!-- Main section containing terminal and action triggers -->
         <main>
-            <div class="round-container">
-                <div class="round-container-header">
-                    <span>Universal Preserver Workbench</span>
-                </div>
-                <div class="round-container-content">
-                    <h2 style="margin-top: 0; color: var(--link);">The Ultimate Console Companion!</h2>
-                    <p style="font-size: 0.95rem; line-height: 1.6;">
-                        Welcome to the **Universal Console Edition**. The Oracle has been trained to recognize and extract data from a wide variety of ancient console CD formats.
-                    </p>
-                    
-                    <div style="background: #fff; border: 3px dashed var(--link); padding: 25px; border-radius: 10px; margin: 25px 0; text-align: center;">
-                        <h4 style="margin-top: 0; color: var(--link);">Place your Console Offering here:</h4>
-                        <input type="file" id="file-in" style="display: none;">
-                        <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
-                    </div>
+            <div class="panel" style="text-align: center; padding: 30px 20px;">
+                <h2 style="margin-top: 0; color: var(--scumm-dark-red); font-family: sans-serif;">The Universal Preserver Workbench</h2>
+                <p style="color: #666; font-size: 0.95rem; line-height: 1.5; max-width: 600px; margin: 0 auto 20px auto;">
+                    This web workbench executes the official ScummVM dumper utility entirely in your web browser via WebAssembly. No data is uploaded to any server.
+                </p>
 
-                    <div id="troubleshooting" style="margin-top: 20px; background: #fff5c6; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; font-size: 0.85rem;">
-                        <strong style="color: var(--link);">💡 Universal Console Tips</strong>
-                        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-                            <li><strong>PSX & Saturn:</strong> RAW (.bin) images are supported. The Oracle will automatically strip XA headers to find the artifacts.</li>
-                            <li><strong>Philips CD-i:</strong> Experimental Green Book support is now active. Arrive with your .iso or .bin offering.</li>
-                            <li><strong>3DO:</strong> Continued robust support for Opera FileSystem images.</li>
-                            <li><strong>PC-Engine:</strong> Sube la pista de datos (Data Track) de tu volcado de CD.</li>
-                        </ul>
-                    </div>
+                <div style="background-color: #faf9f6; border: 3px dashed var(--scumm-orange); padding: 30px; border-radius: 10px; max-width: 500px; margin: 0 auto;">
+                    <h3 style="margin-top: 0; color: var(--scumm-orange); font-size: 1.1rem;">Place your Offering here</h3>
+                    <input type="file" id="file-in" style="display: none;">
+                    <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
+                </div>
+
+                <div class="info-card" style="max-width: 550px; margin: 20px auto 0 auto; text-align: left;">
+                    <strong>💡 Supported Offerings:</strong>
+                    <ul style="margin: 5px 0 0 0; padding-left: 20px;">
+                        <li><strong>Macintosh CD-ROMs:</strong> Standard HFS images (.dsk, .img, .iso, .toast).</li>
+                        <li><strong>Hybrid Disks:</strong> Discs containing both HFS and ISO9660 tracks.</li>
+                        <li><strong>Panasonic 3DO:</strong> Continued full support for OperaFS filesystems.</li>
+                    </ul>
                 </div>
             </div>
 
-            <div class="round-container">
-                <div class="round-container-header">The Ritual Logs</div>
-                <div class="round-container-content" style="padding: 0;">
-                    <div class="console-box">
-                        <div id="console" class="console">The Oracle is currently in a deep slumber...</div>
-                    </div>
-                    
-                    <div id="dl-panel" class="download-box">
-                        <h2 style="color: var(--success-green); margin-top: 0;">Victory! The Artifacts are Manifested!</h2>
-                        <a id="dl-link" href="#" class="btn-scumm" style="display: inline-block; width: auto; background-color: var(--success-green); box-shadow: 0 4px 0px #2e4d03;">Claim your Artifacts (.ZIP)</a>
-                    </div>
+            <!-- Terminal and downloads -->
+            <div class="console-container">
+                <div class="console-header">
+                    <span>THE ORACLE'S VISION LOGS</span>
+                    <span id="log-status">IDLE</span>
                 </div>
+                <div id="console" class="console">The Oracle is currently in a deep slumber...</div>
+            </div>
+
+            <div id="dl-panel" class="download-box">
+                <h3>Victory! The Artifacts have Manifested!</h3>
+                <p style="font-size: 0.9rem; color: #555; margin-bottom: 15px;">Your extracted game files are packed and ready to be claimed.</p>
+                <a id="dl-link" href="#" class="btn-scumm download-btn">Claim your Artifacts (.ZIP)</a>
             </div>
         </main>
     </div>
 
     <footer>
-        &copy; 2026 ScummVM Team. Universal Console Edition.<br>
+        &copy; 2026 <a href="https://www.scummvm.org/" target="_blank">ScummVM Team</a>. Dumper Companion Web Edition.<br>
         "Look behind you, a three-headed console dumper!"
     </footer>
 </div>
@@ -226,12 +446,14 @@
     let pyodide;
     const consoleDiv = document.getElementById('console');
     const statusText = document.getElementById('status-text');
+    const logStatus = document.getElementById('log-status');
     const runBtn = document.getElementById('run-btn');
     const fileIn = document.getElementById('file-in');
     const cmdSelect = document.getElementById('cmd-select');
     const encInput = document.getElementById('enc-input');
     const chkJp = document.getElementById('chk-jp');
     const chkNoPuny = document.getElementById('chk-no-puny');
+    const chkMacBinary = document.getElementById('chk-macbinary');
     const dlPanel = document.getElementById('dl-panel');
     const dlLink = document.getElementById('dl-link');
     const punyInput = document.getElementById('puny-input');
@@ -261,7 +483,7 @@
             await micropip.install(['machfs', 'pycdlib']);
 
             log("> Retrieving dumper-companion.py...", "system");
-            const resp = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
+            const resp = await fetch("https://raw.githubusercontent.com/boolforge/scummvm/master/devtools/dumper-companion.py");
             const code = await resp.text();
             pyodide.FS.writeFile('/home/pyodide/dumper-companion.py', code);
 
@@ -271,13 +493,14 @@
             pyodide.FS.writeFile('/home/pyodide/wrapper.py', wrapperCode);
             await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import wrapper");
 
-            log("✅ The Oracle has awakened. Universal Console Support active.", "system");
-            statusText.textContent = "ORACLE READY";
-            statusText.style.color = "var(--menu-title)";
+            log("✅ The Oracle has awakened. Ready to accept offerings.", "system");
+            statusText.textContent = "THE ORACLE HAS AWAKENED";
+            statusText.style.color = "var(--scumm-yellow)";
             runBtn.disabled = false;
         } catch (e) {
             log("!! Awakening failed: " + e.message, "stderr");
             statusText.textContent = "AWAKENING FAILED";
+            statusText.style.color = "#ff3d00";
         }
     }
 
@@ -319,7 +542,7 @@
         }
         const blob = await zip.generateAsync({type: "blob"});
         dlLink.href = URL.createObjectURL(blob);
-        dlLink.download = "scummvm_universal_dump_" + Date.now() + ".zip";
+        dlLink.download = "scummvm_dump_" + Date.now() + ".zip";
         dlPanel.style.display = "block";
         log("✅ The Universal Artifacts are ready for download.", "system");
     }
@@ -332,7 +555,8 @@
 
         dlPanel.style.display = "none";
         runBtn.disabled = true;
-        runBtn.textContent = "EXTRACTING...";
+        logStatus.textContent = "PROCESS ACTIVE";
+        logStatus.style.color = "var(--scumm-yellow)";
         log(`\n--- Ritual of Extraction: ${file.name} ---`, "system");
 
         try {
@@ -343,6 +567,7 @@
             let args = [];
             if (chkJp.checked) args.push('--japanese');
             if (!chkNoPuny.checked) args.push('--no-punycode');
+            if (chkMacBinary.checked) args.push('--forcemacbinary');
             const enc = encInput.value.trim();
             if (enc) { args.push('--encoding'); args.push(enc); }
 
@@ -357,7 +582,8 @@ wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.str
             log("!! Ritual failed: " + err.message, "stderr");
         } finally {
             runBtn.disabled = false;
-            runBtn.textContent = "BEGIN THE EXTRACTION RITUAL";
+            logStatus.textContent = "IDLE";
+            logStatus.style.color = "#aaa";
         }
     });
 
