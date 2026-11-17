@@ -1914,18 +1914,23 @@ def extract_volume_d88(args: argparse.Namespace) -> None:
         sector_map = {}
         for track_idx, track_off in tracks:
             f.seek(track_off)
-            while True:
+            hdr_peek = f.read(6)
+            if len(hdr_peek) < 6:
+                continue
+            _, _, _, _, num_sec = unpack("<BBBBH", hdr_peek)
+            f.seek(track_off)
+            for s in range(num_sec):
                 sec_hdr = f.read(16)
                 if len(sec_hdr) < 16:
                     break
-                c, h, r, n, num_sec = unpack("<BBBBH", sec_hdr[:6])
-                sec_len = unpack("<H", sec_hdr[14:16])[0]
-                sec_data = f.read(sec_len)
-                if len(sec_data) < sec_len:
+                s_c, s_h, s_r, s_n = sec_hdr[0], sec_hdr[1], sec_hdr[2], sec_hdr[3]
+                s_len = unpack("<H", sec_hdr[14:16])[0]
+                if s_len == 0:
+                    s_len = 128 << s_n
+                sec_data = f.read(s_len)
+                if len(sec_data) < s_len:
                     break
-                sector_map[(c, h, r)] = sec_data
-                if r == num_sec:
-                    break
+                sector_map[(track_idx, s)] = sec_data
 
         raw_stream = bytearray()
         sorted_keys = sorted(sector_map.keys())
