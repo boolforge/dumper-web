@@ -755,15 +755,28 @@ def convert_cue_to_iso(cue_path: Path, iso_path: Path) -> None:
 
             src.seek(start_sector * sector_size)
 
-            for _ in range(total_sectors):
-                chunk = src.read(sector_size)
-
-                if not chunk or len(chunk) < sector_size:
+            # Sector Streaming Optimization:
+            # Optical media sector size is 2352 bytes. Reading one sector at a
+            # time incurs high Python function call overhead and underlying system
+            # calls across ~150,000+ sectors. 64-sector chunk buffering (150,528
+            # bytes) minimizes context switches, accelerating extraction in
+            # WebAssembly virtual filesystems and shared storage environments.
+            batch_sectors = 64
+            sectors_remaining = total_sectors
+            while sectors_remaining > 0:
+                current_batch = min(batch_sectors, sectors_remaining)
+                chunk = src.read(current_batch * sector_size)
+                if not chunk:
                     logging.warning(f"Reached early EOF on track {track.number}.")
                     break
-
-                payload = chunk[data_offset : data_offset + payload_size]
-                dst.write(payload)
+                actual_sectors = len(chunk) // sector_size
+                for s in range(actual_sectors):
+                    sector_chunk = chunk[s * sector_size : (s + 1) * sector_size]
+                    payload = sector_chunk[data_offset : data_offset + payload_size]
+                    dst.write(payload)
+                sectors_remaining -= actual_sectors
+                if actual_sectors < current_batch:
+                    break
     print("Done")
 
 @dataclass
