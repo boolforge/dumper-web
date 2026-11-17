@@ -40,8 +40,18 @@ from typing import Any, Optional, Dict, List
 from pathlib import Path
 from dataclasses import dataclass, field
 
-import machfs  # type: ignore
-import pycdlib  # type: ignore
+# Guard optional dependencies to permit format conversion routines
+# (CUE/BIN, ECM, audio dumps) and string utilities to run in minimal
+# environments without raising unhandled ImportError at module load time.
+try:
+    import machfs  # type: ignore
+except ImportError:
+    machfs = None
+
+try:
+    import pycdlib  # type: ignore
+except ImportError:
+    pycdlib = None
 
 # fmt: off
 decode_map = {
