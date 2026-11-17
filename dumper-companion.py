@@ -717,11 +717,10 @@ def convert_cue_to_iso(cue_path: Path, iso_path: Path) -> None:
             out_path = iso_path
             data_track_extracted = True
         elif "AUDIO" in track.type:
-            if data_track_extracted:
-                logging.warning(
-                    f"skip additional data track {track.number:02d}; only primary data track is supported."
-                )
-                continue
+            # Red Book CDDA audio tracks are dumped to standard 44.1 kHz,
+            # 16-bit stereo PCM WAV files. Mixed-mode optical media images contain
+            # both data and audio tracks; do not skip audio when a preceding
+            # data track has already been processed.
             print(f"Dumping audio track {track.number:02d}")
             data_offset = 0
             payload_size = 2352
