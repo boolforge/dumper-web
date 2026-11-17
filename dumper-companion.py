@@ -330,6 +330,8 @@ class FileSystem(Enum):
     hfs = "hfs"
     iso9660 = "iso9660"
     threedo = "3do"
+    fat12 = "fat12"
+    d88 = "d88"
 
 
 class Extension(Enum):
@@ -586,7 +588,8 @@ def probe_iso(args: argparse.Namespace) -> None:
         args.extension = check_extension(args)
         print("Detected extension:", args.extension.value)
 
-    print("Japanese detected:", check_japanese(args))
+    if fs in [FileSystem.hybrid, FileSystem.iso9660, FileSystem.hfs]:
+        print("Japanese detected:", check_japanese(args))
 
 
 def check_japanese(args: argparse.Namespace) -> bool:
@@ -595,8 +598,14 @@ def check_japanese(args: argparse.Namespace) -> bool:
         fn = extract_volume_hybrid
     elif args.fs == FileSystem.iso9660:
         fn = extract_volume_iso
-    else:
+    elif args.fs == FileSystem.hfs:
         fn = extract_volume_hfs
+    elif args.fs == FileSystem.fat12:
+        fn = extract_volume_fat12
+    elif args.fs == FileSystem.d88:
+        fn = extract_volume_d88
+    else:
+        return False
     try:
         fn(args)
     except Exception:
@@ -766,6 +775,43 @@ def check_fs(iso: str | Path) -> Optional[FileSystem]:
                         break
             elif mac_3 == b"BD" or mac_1 == b"ER":
                 disk_formats.append(FileSystem.hfs)
+
+        # Floppy D88 format detection
+        src_path = Path(iso)
+        if f_size >= 0x2B0:
+            f.seek(0x1C)
+            d_size_bytes = f.read(4)
+            if len(d_size_bytes) == 4:
+                d_size = unpack("<I", d_size_bytes)[0]
+                f.seek(0x20)
+                track_offsets = unpack("<164I", f.read(164 * 4))
+                valid_offsets = [t for t in track_offsets if 0 < t < f_size]
+                if (src_path.suffix.lower() in [".d88", ".d77"] and len(valid_offsets) >= 40) or (len(valid_offsets) >= 40 and abs(d_size - f_size) <= 1024):
+                    disk_formats.append(FileSystem.d88)
+
+        # FAT12 / Floppy disk image detection
+        if not disk_formats and f_size >= 512:
+            f.seek(0)
+            boot = f.read(512)
+            if len(boot) == 512:
+                bps = unpack("<H", boot[11:13])[0]
+                spc = boot[13]
+                rsv = unpack("<H", boot[14:16])[0]
+                num_fats = boot[16]
+                rde = unpack("<H", boot[17:19])[0]
+                media = boot[21]
+                spf = unpack("<H", boot[22:24])[0]
+                if (bps in (256, 512, 1024) and spc in (1, 2, 4, 8, 16) and
+                    num_fats in (1, 2) and rsv >= 1 and rde > 0 and spf > 0 and
+                    media in (0xF0, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF)):
+                    disk_formats.append(FileSystem.fat12)
+                elif src_path.suffix.lower() in [".dsk", ".img", ".ima", ".vfd"]:
+                    fat_pos = rsv * 512 if rsv > 0 else 512
+                    if f_size > fat_pos + 3:
+                        f.seek(fat_pos)
+                        f_head = f.read(3)
+                        if len(f_head) == 3 and f_head[1] == 0xFF and f_head[2] == 0xFF:
+                            disk_formats.append(FileSystem.fat12)
 
     if not disk_formats:
         return None
@@ -1529,6 +1575,10 @@ def extract_iso(args: argparse.Namespace) -> None:
             extract_volume_hfs(args)
         elif args.fs == FileSystem.threedo:
             extract3do(args)
+        elif args.fs == FileSystem.fat12:
+            extract_volume_fat12(args)
+        elif args.fs == FileSystem.d88:
+            extract_volume_d88(args)
         else:
             extract_volume_hybrid(args)
             
@@ -1721,6 +1771,182 @@ def extract_volume_hybrid(args: argparse.Namespace) -> None:
 
     args.dir = main_dir.joinpath("iso9660")
     extract_volume_iso(args)
+
+
+def extract_volume_fat12(args: argparse.Namespace) -> None:
+    """Extract a FAT12 floppy or disk image (MSX, DOS, Atari ST)."""
+    source_path = Path(args.src)
+    output_dir = Path(args.dir)
+    silent = getattr(args, "silent", False)
+
+    if not silent:
+        print(f"Extracting FAT12 image: {source_path.name} -> {output_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(source_path, "rb") as f:
+        boot = f.read(512)
+        if len(boot) < 512:
+            raise ValueError(f"File {source_path} is smaller than 512 bytes.")
+
+        bps = unpack("<H", boot[11:13])[0]
+        if bps not in (256, 512, 1024, 2048, 4096) or bps == 0:
+            bps = 512
+        spc = boot[13] or 2
+        rsv = unpack("<H", boot[14:16])[0] or 1
+        num_fats = boot[16] or 2
+        rde = unpack("<H", boot[17:19])[0] or 112
+        total_sectors = unpack("<H", boot[19:21])[0]
+        if total_sectors == 0:
+            total_sectors = unpack("<I", boot[32:36])[0]
+        spf = unpack("<H", boot[22:24])[0] or 3
+
+        fat_offset = rsv * bps
+        fat_size = spf * bps
+        f.seek(fat_offset)
+        fat_data = f.read(fat_size)
+
+        root_dir_offset = fat_offset + num_fats * fat_size
+        root_dir_size = rde * 32
+        data_offset = root_dir_offset + root_dir_size
+        cluster_size = spc * bps
+
+        def get_next_cluster(cluster_num: int) -> int:
+            idx = int(cluster_num * 1.5)
+            if idx + 2 > len(fat_data):
+                return 0x0FFF
+            val = unpack("<H", fat_data[idx : idx + 2])[0]
+            return (val >> 4) if (cluster_num & 1) else (val & 0x0FFF)
+
+        def read_cluster_chain(start_cluster: int, total_file_size: int) -> bytes:
+            data = bytearray()
+            c = start_cluster
+            visited = set()
+            while 2 <= c < 0x0FF8:
+                if c in visited:
+                    break
+                visited.add(c)
+                f.seek(data_offset + (c - 2) * cluster_size)
+                chunk = f.read(cluster_size)
+                data.extend(chunk)
+                if len(data) >= total_file_size:
+                    break
+                c = get_next_cluster(c)
+            return bytes(data[:total_file_size])
+
+        def parse_directory(dir_bytes: bytes, current_dir: Path):
+            current_dir.mkdir(parents=True, exist_ok=True)
+            for i in range(0, len(dir_bytes), 32):
+                entry = dir_bytes[i : i + 32]
+                if len(entry) < 32 or entry[0] == 0:
+                    break
+                if entry[0] == 0xE5:
+                    continue
+                attr = entry[11]
+                if attr == 0x0F or attr & 0x08:
+                    continue
+
+                raw_name = entry[0:8].rstrip()
+                raw_ext = entry[8:11].rstrip()
+                try:
+                    name_str = raw_name.decode("shift-jis").strip()
+                except UnicodeDecodeError:
+                    name_str = raw_name.decode("latin1", errors="replace").strip()
+
+                try:
+                    ext_str = raw_ext.decode("shift-jis").strip()
+                except UnicodeDecodeError:
+                    ext_str = raw_ext.decode("latin1", errors="replace").strip()
+
+                if not name_str or name_str in [".", ".."]:
+                    continue
+
+                fname = f"{name_str}.{ext_str}" if ext_str else name_str
+                fname = "".join(c if c not in r'<>:"/\|?*' else "_" for c in fname)
+
+                start_cluster = unpack("<H", entry[26:28])[0]
+                file_size = unpack("<I", entry[28:32])[0]
+                is_dir = bool(attr & 0x10)
+
+                target_path = current_dir / fname
+                if is_dir:
+                    sub_dir_bytes = read_cluster_chain(start_cluster, 0x100000)
+                    parse_directory(sub_dir_bytes, target_path)
+                else:
+                    file_bytes = read_cluster_chain(start_cluster, file_size)
+                    target_path.write_bytes(file_bytes)
+                    if not silent:
+                        print(f"  Extracted: {target_path.relative_to(output_dir)} ({len(file_bytes)} bytes)")
+
+        f.seek(root_dir_offset)
+        root_dir_data = f.read(root_dir_size)
+        parse_directory(root_dir_data, output_dir)
+        if not silent:
+            print("FAT12 extraction completed successfully.")
+
+
+def extract_volume_d88(args: argparse.Namespace) -> None:
+    """Extract a D88/D77 floppy disk image (PC-8801, PC-98)."""
+    source_path = Path(args.src)
+    output_dir = Path(args.dir)
+    silent = getattr(args, "silent", False)
+
+    if not silent:
+        print(f"Extracting D88 image: {source_path.name} -> {output_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(source_path, "rb") as f:
+        hdr = f.read(0x20)
+        disk_title = hdr[:17].rstrip(b"\x00")
+        try:
+            title_str = disk_title.decode("shift-jis")
+        except UnicodeDecodeError:
+            title_str = disk_title.decode("latin1", errors="replace")
+
+        disk_type = hdr[0x1B]
+        track_offsets = unpack("<164I", f.read(164 * 4))
+
+        tracks = [(idx, off) for idx, off in enumerate(track_offsets) if off > 0]
+        if not silent:
+            print(f"  D88 Title: '{title_str}', Type: 0x{disk_type:02X}, Formatted Tracks: {len(tracks)}")
+
+        sector_map = {}
+        for track_idx, track_off in tracks:
+            f.seek(track_off)
+            while True:
+                sec_hdr = f.read(16)
+                if len(sec_hdr) < 16:
+                    break
+                c, h, r, n, num_sec = unpack("<BBBBH", sec_hdr[:6])
+                sec_len = unpack("<H", sec_hdr[14:16])[0]
+                sec_data = f.read(sec_len)
+                if len(sec_data) < sec_len:
+                    break
+                sector_map[(c, h, r)] = sec_data
+                if r == num_sec:
+                    break
+
+        raw_stream = bytearray()
+        sorted_keys = sorted(sector_map.keys())
+        for key in sorted_keys:
+            raw_stream.extend(sector_map[key])
+
+        raw_img_path = output_dir / f"{source_path.stem}.raw"
+        raw_img_path.write_bytes(raw_stream)
+        if not silent:
+            print(f"  Reconstructed raw image: {raw_img_path.name} ({len(raw_stream)} bytes, {len(sector_map)} sectors)")
+
+        try:
+            fake_args = argparse.Namespace(src=raw_img_path, dir=output_dir / "files", silent=True)
+            extract_volume_fat12(fake_args)
+            if not silent:
+                print("  FAT12 filesystem identified and extracted from D88 image.")
+        except Exception:
+            pass
+
+        if not silent:
+            print("D88 extraction completed successfully.")
 
 
 def extract_partition(args: argparse.Namespace, vol: machfs.Volume) -> int:
@@ -2301,9 +2527,9 @@ def generate_parser() -> argparse.ArgumentParser:
     )
     parser_iso.add_argument(
         "--fs",
-        choices=["iso9660", "hfs", "hybrid"],
+        choices=["iso9660", "hfs", "hybrid", "3do", "fat12", "d88"],
         metavar="FILE_SYSTEM",
-        help="Specify the file system of the ISO",
+        help="Specify the file system of the image",
     )
     parser_iso.add_argument(
         "--keep-files",

@@ -28,6 +28,7 @@ Runs entirely client-side via Pyodide (`v0.25.0`) WebAssembly in standard web br
   - **PlayStation / Sega CD / PC Engine CD:** CUE/BIN, CloneCD CCD/IMG, and Alcohol 120% MDS/MDF.
   - **Panasonic 3DO:** Full OperaFS filesystem extraction and multi-track detection.
   - **Macintosh HFS / HFS+:** Classic Mac disc images (`.dsk`, `.img`, `.iso`, `.toast`) and MacBinary encoding.
+  - **Floppy Disks (MSX2, MS-DOS, PC-8801, PC-98):** Full FAT12 directory traversal and extraction from floppy images (`.dsk`, `.img`, `.ima`), plus D88/D77 sector reconstruction and depacking (`.d88`, `.d77`).
   - **Hybrid Discs:** Simultaneous extraction of dual HFS and ISO9660 partitions.
 
 - **Zero Data Leakage:**
