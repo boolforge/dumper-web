@@ -675,10 +675,61 @@ def convert_cue_to_iso(cue_path: Path, iso_path: Path) -> None:
 
     for i, track in enumerate(tracks):
         bin_path = cue_path.parent / track.file
-
         if not bin_path.exists():
-            logging.warning(f"Associated BIN file not found: {bin_path}")
-            continue
+            # Multi-stage companion resolution pipeline:
+            # 1. Path normalization: convert Windows backslashes ('\') to POSIX ('/').
+            # 2. Local basename resolution within the CUE sheet directory.
+            # 3. Case-insensitive filename matching for cross-platform filesystems.
+            # 4. Container extension matching (.ecm and .bin.ecm variations).
+            # 5. Track prefix matching ('track 01', 'track_01', 'track01').
+            # 6. Fallback to single available optical media binary in the CUE directory.
+            clean_name = os.path.basename(track.file.replace(chr(92), "/"))
+            candidate = cue_path.parent / clean_name
+            if candidate.exists():
+                bin_path = candidate
+            else:
+                matched = False
+                for existing in cue_path.parent.iterdir():
+                    if existing.name.lower() == clean_name.lower():
+                        bin_path = existing
+                        matched = True
+                        break
+                if not matched:
+                    for ext in [".ecm", ".bin.ecm"]:
+                        ecm_cand = cue_path.parent / (clean_name + ext)
+                        if ecm_cand.exists():
+                            bin_path = ecm_cand
+                            matched = True
+                            break
+                        stem_cand = cue_path.parent / (Path(clean_name).stem + ext)
+                        if stem_cand.exists():
+                            bin_path = stem_cand
+                            matched = True
+                            break
+                if not matched:
+                    prefix1 = f"track {track.number:02d}".lower()
+                    prefix2 = f"track_{track.number:02d}".lower()
+                    prefix3 = f"track{track.number:02d}".lower()
+                    for existing in cue_path.parent.iterdir():
+                        ename = existing.name.lower()
+                        if ename.startswith(prefix1) or ename.startswith(prefix2) or ename.startswith(prefix3):
+                            bin_path = existing
+                            matched = True
+                            break
+                if not matched:
+                    candidates = (
+                        list(cue_path.parent.glob("*.bin"))
+                        + list(cue_path.parent.glob("*.BIN"))
+                        + list(cue_path.parent.glob("*.ecm"))
+                        + list(cue_path.parent.glob("*.bin.ecm"))
+                        + list(cue_path.parent.glob("*.img"))
+                        + list(cue_path.parent.glob("*.iso"))
+                    )
+                    if len(candidates) == 1:
+                        bin_path = candidates[0]
+                    else:
+                        logging.warning(f"Associated BIN file not found: {bin_path}")
+                        continue
 
         start_sector = track.indices.get(1, 0)
 
