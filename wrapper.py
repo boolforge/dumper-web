@@ -83,6 +83,88 @@ def process_task_advanced(command, filename, extra_args):
     return output_io.getvalue()
 
 
+def package_artifacts(source_dir="/home/pyodide/virtual_out", subpath="", output_zip="/home/pyodide/scummvm_dump.zip"):
+    """Package extracted artifacts (or subpath) into a DEFLATE-compressed ZIP.
+
+    Iterates through the target hierarchy sequentially to keep memory usage O(1)
+    relative to total archive size, preventing browser WebAssembly out-of-memory errors.
+    """
+    import zipfile
+
+    base_dir = os.getcwd()
+    src = source_dir if os.path.isabs(source_dir) else os.path.join(base_dir, source_dir)
+    target = os.path.join(src, subpath) if subpath else src
+
+    if not os.path.exists(target):
+        raise FileNotFoundError(f"Target path does not exist: {target}")
+
+    out_zip = output_zip if os.path.isabs(output_zip) else os.path.join(base_dir, output_zip)
+    if os.path.exists(out_zip):
+        os.remove(out_zip)
+
+    count = 0
+    with zipfile.ZipFile(out_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+        if os.path.isfile(target):
+            zf.write(target, os.path.basename(target))
+            count = 1
+        else:
+            for root, dirs, files in os.walk(target):
+                for file in files:
+                    abs_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(abs_path, target)
+                    zf.write(abs_path, rel_path)
+                    count += 1
+
+    size = os.path.getsize(out_zip)
+    return {"count": count, "size": size, "path": out_zip}
+
+
+def get_extracted_summary(source_dir="/home/pyodide/virtual_out"):
+    """Inspect the extracted directory hierarchy and return structural statistics."""
+    base_dir = os.getcwd()
+    src = source_dir if os.path.isabs(source_dir) else os.path.join(base_dir, source_dir)
+    if not os.path.exists(src):
+        return {"items": [], "file_count": 0, "total_bytes": 0}
+
+    items = []
+    total_files = 0
+    total_bytes = 0
+
+    for entry in sorted(os.listdir(src)):
+        entry_path = os.path.join(src, entry)
+        if os.path.isdir(entry_path):
+            folder_files = 0
+            folder_bytes = 0
+            for root, dirs, files in os.walk(entry_path):
+                folder_files += len(files)
+                for f in files:
+                    folder_bytes += os.path.getsize(os.path.join(root, f))
+            total_files += folder_files
+            total_bytes += folder_bytes
+            items.append({
+                "name": entry,
+                "is_dir": True,
+                "file_count": folder_files,
+                "bytes": folder_bytes
+            })
+        else:
+            f_size = os.path.getsize(entry_path)
+            total_files += 1
+            total_bytes += f_size
+            items.append({
+                "name": entry,
+                "is_dir": False,
+                "file_count": 1,
+                "bytes": f_size
+            })
+
+    return {
+        "items": items,
+        "file_count": total_files,
+        "total_bytes": total_bytes
+    }
+
+
 def translate_string(text, to_punycode=True):
     """Bidirectional converter between Punycode ASCII and Japanese Shift-JIS strings."""
     try:

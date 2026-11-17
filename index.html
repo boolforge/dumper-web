@@ -285,6 +285,13 @@
             display: inline-block;
             width: auto;
             padding: 12px 30px;
+            border: none;
+            color: #fff;
+            text-transform: uppercase;
+            font-family: inherit;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
         }
 
         .download-btn:hover {
@@ -433,8 +440,16 @@
 
             <div id="dl-panel" class="download-box">
                 <h3>Victory! The Artifacts have Manifested!</h3>
-                <p style="font-size: 0.9rem; color: #555; margin-bottom: 15px;">Your extracted game files are packed and ready to be claimed.</p>
-                <a id="dl-link" href="#" class="btn-scumm download-btn">Claim your Artifacts (.ZIP)</a>
+                <p id="dl-summary-text" style="font-size: 0.95rem; color: #555; margin-bottom: 15px;">Your extracted game files are packed and ready to be claimed.</p>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <button id="dl-btn" class="btn-scumm download-btn" style="min-width: 260px;">Claim your Artifacts (.ZIP)</button>
+                    <a id="dl-link-fallback" href="#" style="font-size: 0.85rem; color: var(--scumm-dark-red); text-decoration: underline; font-weight: bold; cursor: pointer; display: none;">Direct Browser Download Fallback</a>
+                </div>
+                <div id="dl-components" style="display: none; margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px; text-align: left;">
+                    <h4 style="margin: 0 0 8px 0; color: var(--scumm-dark-red); font-size: 0.95rem;">📦 Modular Component Packages (Recommended for Mobile Devices):</h4>
+                    <p style="font-size: 0.82rem; color: #666; margin: 0 0 10px 0;">If full-archive download fails on your mobile device due to browser memory limits, save individual component folders or tracks:</p>
+                    <div id="dl-components-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
             </div>
         </main>
     </div>
@@ -459,7 +474,13 @@
     const chkNoPuny = document.getElementById('chk-no-puny');
     const chkMacBinary = document.getElementById('chk-macbinary');
     const dlPanel = document.getElementById('dl-panel');
-    const dlLink = document.getElementById('dl-link');
+    const dlBtn = document.getElementById('dl-btn');
+    const dlLinkFallback = document.getElementById('dl-link-fallback');
+    const dlSummaryText = document.getElementById('dl-summary-text');
+    const dlComponents = document.getElementById('dl-components');
+    const dlComponentsList = document.getElementById('dl-components-list');
+    let currentBlob = null;
+    let currentZipName = "";
     const punyInput = document.getElementById('puny-input');
     const punyResult = document.getElementById('puny-result');
 
@@ -527,39 +548,140 @@
         } catch (e) { punyResult.textContent = "Vision clouded..."; }
     });
 
-    async function prepareDownload() {
-        const outPath = '/home/pyodide/virtual_out';
-        if (!pyodide.FS.analyzePath(outPath).exists) return;
-
-        const files = [];
-        function walk(dir) {
-            const list = pyodide.FS.readdir(dir);
-            for (const item of list) {
-                if (item === "." || item === "..") continue;
-                const fullPath = dir + "/" + item;
-                const stat = pyodide.FS.stat(fullPath);
-                if (pyodide.FS.isDir(stat.mode)) walk(fullPath);
-                else files.push(fullPath);
+    async function saveBlobToDevice(blob, filename) {
+        // Method 1: File System Access API (showSaveFilePicker)
+        // Native on Chrome for Android (v132+) & Desktop Chromium.
+        // Bypasses Android DownloadManager IPC limits by streaming directly to disk.
+        if (typeof window.showSaveFilePicker === 'function') {
+            try {
+                log(`> Requesting device storage location for ${filename}...`, "system");
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'ZIP Archive',
+                        accept: { 'application/zip': ['.zip'] }
+                    }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                log(`✅ Successfully saved ${filename} to your device!`, "system");
+                return;
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    log("Storage save was cancelled by the user.", "system");
+                    return;
+                }
+                log("! Native file picker declined or failed: " + err.message, "stderr");
+                log("> Attempting standard browser download stream...", "system");
             }
         }
-        walk(outPath);
 
-        if (files.length === 0) {
+        // Method 2: Standard anchor click with explicit application/zip MIME type
+        try {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 60000);
+            log(`✅ Download request for ${filename} sent to browser.`, "system");
+        } catch (e) {
+            log(`!! Download failed: ${e.message}`, "stderr");
+        }
+    }
+
+    async function prepareDownload() {
+        log("> Inspecting Manifestation Chamber...", "system");
+        let summary;
+        try {
+            const summaryJson = pyodide.runPython("import json; json.dumps(wrapper.get_extracted_summary())");
+            summary = JSON.parse(summaryJson);
+        } catch (e) {
+            log("!! Failed to inspect chamber: " + e.message, "stderr");
+            return;
+        }
+
+        if (!summary.file_count || summary.file_count === 0) {
             log("!! No artifacts found in the Manifestation Chamber.", "stderr");
             return;
         }
 
-        log(`> Packing ${files.length} artifacts into a ZIP...`, "system");
-        const zip = new JSZip();
-        for (const f of files) {
-            zip.file(f.replace(outPath + "/", ""), pyodide.FS.readFile(f));
+        const totalMb = (summary.total_bytes / (1024 * 1024)).toFixed(2);
+        log(`> Found ${summary.file_count} artifact(s) (${totalMb} MB uncompressed).`, "system");
+        log(`> Packing & compressing via Python DEFLATE engine...`, "system");
+
+        let packResult;
+        try {
+            const packJson = pyodide.runPython("import json; json.dumps(wrapper.package_artifacts())");
+            packResult = JSON.parse(packJson);
+        } catch (e) {
+            log("!! Python packaging failed: " + e.message, "stderr");
+            return;
         }
-        const blob = await zip.generateAsync({type: "blob"});
-        dlLink.href = URL.createObjectURL(blob);
-        dlLink.download = "scummvm_dump_" + Date.now() + ".zip";
+
+        const zipMb = (packResult.size / (1024 * 1024)).toFixed(2);
+        log(`✅ Compression complete: ${packResult.count} files -> ${zipMb} MB archive.`, "system");
+
+        currentZipName = "scummvm_dump_" + Date.now() + ".zip";
+        const zipBytes = pyodide.FS.readFile('/home/pyodide/scummvm_dump.zip');
+        currentBlob = new Blob([zipBytes], { type: "application/zip" });
+
+        dlSummaryText.textContent = `Extracted ${packResult.count} files (${totalMb} MB uncompressed). Compressed archive size: ${zipMb} MB.`;
+        dlBtn.textContent = `Claim your Artifacts (.ZIP - ${zipMb} MB)`;
+
+        // Setup fallback direct URL
+        const fallbackUrl = URL.createObjectURL(currentBlob);
+        dlLinkFallback.href = fallbackUrl;
+        dlLinkFallback.download = currentZipName;
+        dlLinkFallback.style.display = "inline-block";
+
+        // Setup modular subfolder / file download options
+        if (summary.items && summary.items.length > 0) {
+            dlComponentsList.innerHTML = "";
+            for (const item of summary.items) {
+                const itemMb = (item.bytes / (1024 * 1024)).toFixed(2);
+                const btn = document.createElement('button');
+                btn.className = 'btn-scumm';
+                btn.style.cssText = 'padding: 6px 12px; font-size: 0.82rem; background-color: var(--scumm-orange); cursor: pointer;';
+                btn.textContent = item.is_dir 
+                    ? `📁 ${item.name}/ (${item.file_count} files, ${itemMb} MB)` 
+                    : `📄 ${item.name} (${itemMb} MB)`;
+
+                btn.onclick = async () => {
+                    try {
+                        log(`> Packaging ${item.name}...`, "system");
+                        const compZipName = `scummvm_${item.name}.zip`;
+                        const resJson = pyodide.runPython(`import json; json.dumps(wrapper.package_artifacts(subpath=${JSON.stringify(item.name)}, output_zip='/home/pyodide/part.zip'))`);
+                        const partRes = JSON.parse(resJson);
+                        const partData = pyodide.FS.readFile('/home/pyodide/part.zip');
+                        const partBlob = new Blob([partData], { type: "application/zip" });
+                        await saveBlobToDevice(partBlob, compZipName);
+                    } catch (e) {
+                        log(`!! Component packaging failed: ${e.message}`, "stderr");
+                    }
+                };
+                dlComponentsList.appendChild(btn);
+            }
+            dlComponents.style.display = "block";
+        } else {
+            dlComponents.style.display = "none";
+        }
+
         dlPanel.style.display = "block";
-        log("✅ The Universal Artifacts are ready for download.", "system");
+        log("✅ Universal Artifacts are ready for download.", "system");
     }
+
+    dlBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!currentBlob) return;
+        await saveBlobToDevice(currentBlob, currentZipName);
+    });
 
     function pickPrimaryVessel(files) {
         const descriptors = [".cue", ".ccd", ".mds", ".toc"];
@@ -579,6 +701,7 @@
         if (!files || !files.length) return;
 
         dlPanel.style.display = "none";
+        currentBlob = null;
         runBtn.disabled = true;
         logStatus.textContent = "PROCESS ACTIVE";
         logStatus.style.color = "var(--scumm-yellow)";
