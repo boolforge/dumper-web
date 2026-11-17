@@ -569,6 +569,9 @@ def encode_string(args: argparse.Namespace) -> int:
 
 def probe_iso(args: argparse.Namespace) -> None:
     fs = check_fs(args.src)
+    if fs is None:
+        print("Detected file system: Unknown or unsupported filesystem")
+        return
     print("Detected file system:", fs.value)
     args.fs = fs
     args.dryrun = True
@@ -707,52 +710,65 @@ def extract_prodos_image(image: bytes, destination_dir: Path) -> None:
     walk(2, destination_dir)  # block 2 = volume directory key block
 
 
-def check_fs(iso: str) -> FileSystem:
+def check_fs(iso: str | Path) -> Optional[FileSystem]:
+    """Inspect optical media descriptors to identify filesystem layout.
+
+    Probes the first 16 blocks for Panasonic 3DO OperaFS headers, tests sector 64
+    for the standard optical Primary Volume Descriptor (PVD / '\x01CD001'), and
+    examines sectors 0..2 for Apple Partition Map (APM) signatures or legacy
+    Macintosh HFS boot blocks.
+
+    Returns:
+        FileSystem enum value if identified, FileSystem.hybrid for multi-partition
+        media (e.g. dual HFS and standard optical filesystem), or None if the
+        filesystem layout is unrecognized.
+    """
     disk_formats = []
-    f = open(iso, "rb")
-    # 3do 
-    f_size = f.seek(0, 2)
-    blocks = f_size // SIZE_OF_BLOCK
-    for block in range(min(16, blocks)):
-        if checkHeader3DO(f, block, 0):
-            disk_formats.append(FileSystem.threedo)
-            break
-
-    # ISO Primary Volume Descriptor
-    f.seek(64 * SECTOR_SIZE)
-    if f.read(6) == b"\x01CD001":
-        # print("Found ISO PVD")
-        disk_formats.append(FileSystem.iso9660)
-
-    f.seek(0)
-    mac_1 = f.read(2)
-    f.seek(1 * SECTOR_SIZE)
-    mac_2 = f.read(2)
-    f.seek(2 * SECTOR_SIZE)
-    mac_3 = f.read(2)
-    if mac_2 == APPLE_PM_SIGNATURE:
-        f.seek(1 * SECTOR_SIZE + 4)
-        partition_num = 1
-        while True:
-            num_partitions, partition_size = unpack(">I4xI", f.read(12))
-            f.seek(0x20, 1)
-            partition_type = f.read(32).decode("mac-roman").split("\x00")[0]
-            if partition_type == "Apple_HFS" and partition_size > 0:
-                disk_formats.append(FileSystem.hfs)
-            # Check if there are more partitions
-            if partition_num <= num_partitions:
-                # Move onto the next partition
-                partition_num += 1
-                f.seek(partition_num * SECTOR_SIZE + 4)
-            else:
-                # Finished parsing the partition map
+    with open(iso, "rb") as f:
+        f.seek(0, 2)
+        f_size = f.tell()
+        blocks = f_size // SIZE_OF_BLOCK
+        for block in range(min(16, blocks)):
+            if checkHeader3DO(f, block, 0):
+                disk_formats.append(FileSystem.threedo)
                 break
 
-    # Mac-only disc
-    elif mac_3 == b"BD" or mac_1 == b"ER":
-        # (mac_1 == b"LK" and mac_3 == b"BD") is only for bootable volumes
-        disk_formats.append(FileSystem.hfs)
+        # Standard optical Primary Volume Descriptor
+        if f_size >= 64 * SECTOR_SIZE + 6:
+            f.seek(64 * SECTOR_SIZE)
+            if f.read(6) == b"\x01CD001":
+                disk_formats.append(FileSystem.iso9660)
 
+        if f_size >= 3 * SECTOR_SIZE:
+            f.seek(0)
+            mac_1 = f.read(2)
+            f.seek(1 * SECTOR_SIZE)
+            mac_2 = f.read(2)
+            f.seek(2 * SECTOR_SIZE)
+            mac_3 = f.read(2)
+            if mac_2 == APPLE_PM_SIGNATURE:
+                f.seek(1 * SECTOR_SIZE + 4)
+                partition_num = 1
+                while True:
+                    data = f.read(12)
+                    if len(data) < 12:
+                        break
+                    num_partitions, partition_size = unpack(">I4xI", data)
+                    f.seek(0x20, 1)
+                    raw_type = f.read(32)
+                    partition_type = raw_type.decode("mac-roman", errors="replace").split("\x00")[0]
+                    if partition_type == "Apple_HFS" and partition_size > 0:
+                        disk_formats.append(FileSystem.hfs)
+                    if partition_num <= num_partitions:
+                        partition_num += 1
+                        f.seek(partition_num * SECTOR_SIZE + 4)
+                    else:
+                        break
+            elif mac_3 == b"BD" or mac_1 == b"ER":
+                disk_formats.append(FileSystem.hfs)
+
+    if not disk_formats:
+        return None
     if len(set(disk_formats)) > 1:
         return FileSystem.hybrid
     return disk_formats[0]
@@ -1496,6 +1512,8 @@ def extract_iso(args: argparse.Namespace) -> None:
 
         if not args.fs:
             args.fs = check_fs(args.src)
+            if args.fs is None:
+                raise ValueError(f"Could not identify a supported filesystem in '{args.src}'.")
             print("Detected filesystem:", args.fs.value)
         else:
             args.fs = FileSystem(args.fs)
