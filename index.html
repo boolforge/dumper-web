@@ -339,7 +339,7 @@
             <img src="https://www.scummvm.org/images/scummvm_logo.png" alt="ScummVM Logo" class="logo-img">
             <div class="title-container">
                 <h1 class="main-title">Dumper Companion</h1>
-                <span class="sub-title">Macintosh HFS, ISO9660 & 3DO CD-ROM Web Extractor</span>
+                <span class="sub-title">Universal Disc Preservation & Web Extractor</span>
             </div>
         </div>
         <div class="oracle-status" id="status-text">
@@ -357,6 +357,7 @@
                     <select id="cmd-select">
                         <option value="iso">iso - Extract Files</option>
                         <option value="probe">probe - Probe Metadata</option>
+                        <option value="unecm">unecm - Decompress ECM Image</option>
                         <option value="createmacfonts">macfonts - Retrieve Classic Fonts</option>
                     </select>
                 </div>
@@ -400,21 +401,23 @@
             <div class="panel" style="text-align: center; padding: 30px 20px;">
                 <h2 style="margin-top: 0; color: var(--scumm-dark-red); font-family: sans-serif;">The Universal Preserver Workbench</h2>
                 <p style="color: #666; font-size: 0.95rem; line-height: 1.5; max-width: 600px; margin: 0 auto 20px auto;">
-                    This web workbench executes the official ScummVM dumper utility entirely in your web browser via WebAssembly. No data is uploaded to any server.
+                    This web workbench executes the official ScummVM dumper utility entirely in your web browser via WebAssembly. Multiple files (.cue + .bin, .bin.ecm, .img) can be selected or dropped simultaneously. No data leaves your machine.
                 </p>
 
-                <div style="background-color: #faf9f6; border: 3px dashed var(--scumm-orange); padding: 30px; border-radius: 10px; max-width: 500px; margin: 0 auto;">
+                <div id="drop-box" style="background-color: #faf9f6; border: 3px dashed var(--scumm-orange); padding: 30px; border-radius: 10px; max-width: 500px; margin: 0 auto; transition: border-color 0.2s, background-color 0.2s; cursor: pointer;">
                     <h3 style="margin-top: 0; color: var(--scumm-orange); font-size: 1.1rem;">Place your Offering here</h3>
-                    <input type="file" id="file-in" style="display: none;">
+                    <p style="font-size: 0.85rem; color: #888; margin: 5px 0 15px 0;">Click to browse or drag & drop one or multiple disc files</p>
+                    <input type="file" id="file-in" multiple style="display: none;">
                     <button id="run-btn" class="btn-scumm" disabled>BEGIN THE EXTRACTION RITUAL</button>
                 </div>
 
                 <div class="info-card" style="max-width: 550px; margin: 20px auto 0 auto; text-align: left;">
                     <strong>💡 Supported Offerings:</strong>
                     <ul style="margin: 5px 0 0 0; padding-left: 20px;">
-                        <li><strong>Macintosh CD-ROMs:</strong> Standard HFS images (.dsk, .img, .iso, .toast).</li>
-                        <li><strong>Hybrid Disks:</strong> Discs containing both HFS and ISO9660 tracks.</li>
-                        <li><strong>Panasonic 3DO:</strong> Continued full support for OperaFS filesystems.</li>
+                        <li><strong>PlayStation, Sega CD &amp; PC Engine:</strong> CUE sheets (.cue) with companion data/audio (.bin, .bin.ecm, .img, .mds) and automated ScummVM <code>AudioCDManager</code> track aliases.</li>
+                        <li><strong>Compressed Disc Images:</strong> Native pure-Python Error Code Modeler (.ecm, .bin.ecm) decompression and direct ISO streaming.</li>
+                        <li><strong>Panasonic 3DO:</strong> Full OperaFS filesystem extraction and multi-track disc support.</li>
+                        <li><strong>Macintosh CD-ROMs:</strong> Standard HFS / HFS+ images (.dsk, .img, .iso, .toast) and Hybrid discs.</li>
                     </ul>
                 </div>
             </div>
@@ -448,6 +451,7 @@
     const statusText = document.getElementById('status-text');
     const logStatus = document.getElementById('log-status');
     const runBtn = document.getElementById('run-btn');
+    const dropBox = document.getElementById('drop-box');
     const fileIn = document.getElementById('file-in');
     const cmdSelect = document.getElementById('cmd-select');
     const encInput = document.getElementById('enc-input');
@@ -483,8 +487,18 @@
             await micropip.install(['machfs', 'pycdlib']);
 
             log("> Retrieving dumper-companion.py...", "system");
-            const resp = await fetch("https://raw.githubusercontent.com/boolforge/scummvm/master/devtools/dumper-companion.py");
-            const code = await resp.text();
+            let code;
+            try {
+                const resp = await fetch("dumper-companion.py");
+                if (resp.ok) {
+                    code = await resp.text();
+                } else {
+                    throw new Error("HTTP " + resp.status);
+                }
+            } catch {
+                const fallbackResp = await fetch("https://raw.githubusercontent.com/scummvm/scummvm/master/devtools/dumper-companion.py");
+                code = await fallbackResp.text();
+            }
             pyodide.FS.writeFile('/home/pyodide/dumper-companion.py', code);
 
             log("> Preparing the Universal Console Bridge...", "system");
@@ -516,7 +530,7 @@
     async function prepareDownload() {
         const outPath = '/home/pyodide/virtual_out';
         if (!pyodide.FS.analyzePath(outPath).exists) return;
-        
+
         const files = [];
         function walk(dir) {
             const list = pyodide.FS.readdir(dir);
@@ -529,7 +543,7 @@
             }
         }
         walk(outPath);
-        
+
         if (files.length === 0) {
             log("!! No artifacts found in the Manifestation Chamber.", "stderr");
             return;
@@ -547,21 +561,39 @@
         log("✅ The Universal Artifacts are ready for download.", "system");
     }
 
-    runBtn.addEventListener('click', () => fileIn.click());
+    function pickPrimaryVessel(files) {
+        const descriptors = [".cue", ".ccd", ".mds", ".toc"];
+        const images = [".iso", ".img", ".dsk", ".toast", ".bin", ".ecm"];
+        for (const ext of descriptors) {
+            const match = files.find(f => f.name.toLowerCase().endsWith(ext));
+            if (match) return match;
+        }
+        for (const ext of images) {
+            const match = files.find(f => f.name.toLowerCase().endsWith(ext));
+            if (match) return match;
+        }
+        return files[0];
+    }
 
-    fileIn.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    async function handleOfferings(files) {
+        if (!files || !files.length) return;
 
         dlPanel.style.display = "none";
         runBtn.disabled = true;
         logStatus.textContent = "PROCESS ACTIVE";
         logStatus.style.color = "var(--scumm-yellow)";
-        log(`\n--- Ritual of Extraction: ${file.name} ---`, "system");
+
+        const primary = pickPrimaryVessel(files);
+        log(`\n--- Ritual of Extraction: Staging ${files.length} Offering(s) ---`, "system");
+        log(`> Selected Primary Vessel: ${primary.name}`, "system");
 
         try {
-            const buffer = await file.arrayBuffer();
-            pyodide.FS.writeFile(`/home/pyodide/${file.name}`, new Uint8Array(buffer));
+            for (const file of files) {
+                const mb = (file.size / (1024 * 1024)).toFixed(2);
+                log(`> Transferring to Manifestation Chamber: ${file.name} (${mb} MB)...`);
+                const buffer = await file.arrayBuffer();
+                pyodide.FS.writeFile(`/home/pyodide/${file.name}`, new Uint8Array(buffer));
+            }
 
             const cmd = cmdSelect.value;
             let args = [];
@@ -571,12 +603,15 @@
             const enc = encInput.value.trim();
             if (enc) { args.push('--encoding'); args.push(enc); }
 
+            log(`> Invoking rite: ${cmd} on ${primary.name}...`, "system");
             const output = pyodide.runPython(`
-wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.stringify(args)})
+wrapper.process_task_advanced('${cmd}', '/home/pyodide/${primary.name}', ${JSON.stringify(args)})
 `);
             log(output);
 
-            if (cmd === 'iso' || cmd === 'createmacfonts') await prepareDownload();
+            if (cmd === 'iso' || cmd === 'createmacfonts' || cmd === 'unecm') {
+                await prepareDownload();
+            }
             log("--- Ritual Complete ---", "system");
         } catch (err) {
             log("!! Ritual failed: " + err.message, "stderr");
@@ -584,6 +619,41 @@ wrapper.process_task_advanced('${cmd}', '/home/pyodide/${file.name}', ${JSON.str
             runBtn.disabled = false;
             logStatus.textContent = "IDLE";
             logStatus.style.color = "#aaa";
+        }
+    }
+
+    dropBox.addEventListener('click', (e) => {
+        if (e.target !== runBtn) fileIn.click();
+    });
+    runBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileIn.click();
+    });
+
+    dropBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropBox.style.borderColor = 'var(--scumm-yellow)';
+        dropBox.style.backgroundColor = '#fff';
+    });
+
+    dropBox.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropBox.style.borderColor = 'var(--scumm-orange)';
+        dropBox.style.backgroundColor = '#faf9f6';
+    });
+
+    dropBox.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropBox.style.borderColor = 'var(--scumm-orange)';
+        dropBox.style.backgroundColor = '#faf9f6';
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            await handleOfferings(Array.from(e.dataTransfer.files));
+        }
+    });
+
+    fileIn.addEventListener('change', async (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            await handleOfferings(Array.from(e.target.files));
         }
     });
 
