@@ -777,6 +777,33 @@ def convert_cue_to_iso(cue_path: Path, iso_path: Path) -> None:
                 sectors_remaining -= actual_sectors
                 if actual_sectors < current_batch:
                     break
+
+        if is_audio:
+            # ScummVM AudioCDManager compatibility:
+            # ScummVM audio subsystems locate CDDA tracks using two standard modes:
+            #   1. 0-based stream index: AudioCDManager::play(track - 1), mapping
+            #      Track 02 (the first audio track) to 'track01.wav'.
+            #   2. 1-based CD track number: 'track02.wav'.
+            # Synthesizing both alias sets ensures zero-configuration compatibility
+            # across all ScummVM game engines (e.g. engines/snatcher, scumm, groovie, sci).
+            aliases = [
+                iso_path.parent / f"track{track.number:02d}.wav",
+                iso_path.parent / f"track{track.number}.wav",
+            ]
+            if track.number > 1:
+                aliases.extend([
+                    iso_path.parent / f"track{track.number - 1:02d}.wav",
+                    iso_path.parent / f"track{track.number - 1}.wav",
+                ])
+            for alias in aliases:
+                if alias != out_path and not alias.exists():
+                    try:
+                        os.link(out_path, alias)
+                    except (OSError, AttributeError):
+                        try:
+                            shutil.copyfile(out_path, alias)
+                        except Exception:
+                            pass
     print("Done")
 
 @dataclass
