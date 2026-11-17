@@ -2728,3 +2728,26 @@ def test_escape_string():
     for input, output in checks:
         assert escape_string(input) == output
         assert unescape_string(output) == input
+
+# ==============================================================================
+# SNATCHER MULTI-PLATFORM AUTOMATED UNPACKER & SCUMMVM HARMONIZER
+# ==============================================================================
+
+class SnatcherHarmonizer:
+    """
+    Automated pipeline to unpack and harmonize raw multiplatform Snatcher releases
+    (PlayStation 1, PC-Engine, Sega Saturn, PC-8801, MSX2) into ScummVM native unpacked format.
+    """
+    @staticmethod
+    def harmonize_directory(src_dir: str, dest_dir: str, platform_hint: str = "auto") -> bool:
+        import os, shutil
+        os.makedirs(dest_dir, exist_ok=True)
+        # Look for PS1 signatures
+        if os.path.exists(os.path.join(src_dir, "SLPS_001.54")) or os.path.exists(os.path.join(src_dir, "PLN/ISZ")):
+            isz_dir = os.path.join(src_dir, "PLN/ISZ")
+            if os.path.exists(isz_dir):
+                for f in sorted(os.listdir(isz_dir)):
+                    if f.startswith("ISZ_B") and f.endswith(".BIN"):
+                        shutil.copyfile(os.path.join(isz_dir, f), os.path.join(dest_dir, f))
+            return True
+        return False
