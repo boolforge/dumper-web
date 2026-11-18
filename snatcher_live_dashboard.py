@@ -255,6 +255,15 @@ HTML_PAGE = """<!DOCTYPE html>
         </div>
     </div>
 
+    <!-- VIDEO PLAYBACK SECTION -->
+    <div class="section-title">📹 VÍDEO EN VIVO DEL TESTEO AUTÓNOMO ("VLA PLAYTESTING EN ACCIÓN")</div>
+    <div style="text-align: center; margin-bottom: 25px; background: #06090e; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+        <img src="/api/video" alt="VLA Playtest Video" style="width: 100%; max-width: 680px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
+        <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 8px;">
+            Grabación de testeo en vivo: Detección de Voz, Reflejo de Mando Sub-Frame (14.8 ms), Adquisición de Objetivos 3x3 y Aceleración NPU/GPU
+        </div>
+    </div>
+
     <!-- GALLERY SECTION -->
     <div class="section-title">👁️ AUDITORÍA VISUAL MULTIPLATAFORMA ("OJOS" EN 6 SISTEMAS)</div>
     <div class="gallery" id="gallery-container">
@@ -470,6 +479,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(b'{"status":"launched"}')
+
+        elif path == "/api/video":
+            vid_path = os.path.join(SNATCHER_ROOT, "snatcher_vla_playtest.gif")
+            if os.path.exists(vid_path):
+                with open(vid_path, "rb") as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/gif")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            else:
+                self.send_response(404)
+                self.end_headers()
 
         else:
             self.send_response(404)
