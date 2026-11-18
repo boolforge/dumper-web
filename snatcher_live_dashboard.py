@@ -45,6 +45,7 @@ WEAPONIZED_FILE = os.path.join(TOOLS_DIR, "weaponized_telemetry.json")
 MULTIPLATFORM_FILE = os.path.join(TOOLS_DIR, "multiplatform_memory_telemetry.json")
 SYMBOLIC_FILE = os.path.join(TOOLS_DIR, "symbolic_execution_report.json")
 RETRO_HOOK_FILE = os.path.join(TOOLS_DIR, "retro_frida_symbolic_telemetry.json")
+MINIDAEMON_STATE = os.path.join(TOOLS_DIR, "minidaemon_state.json")
 SHM_FILE = "/data/user/0/com.agy/files/snatcher_vla_shm.bin"
 
 PLATFORM_BINARIES = {
@@ -55,6 +56,62 @@ PLATFORM_BINARIES = {
     "saturn": {"name": "Sega Saturn", "path": os.path.join(SNATCHER_ROOT, "Sega-Saturn/Original-Japan/MAIN_L.BIN"), "arch": "Dual Hitachi SH-2"},
     "ps1": {"name": "PlayStation 1", "path": os.path.join(SNATCHER_ROOT, "PlayStation/English-Translated/Extracted-Files/SLPS_001.54"), "arch": "MIPS R3000A"}
 }
+
+def read_thermal_metrics():
+    metrics = {"battery_temp_c": 32.0, "cpu_temp_c": 35.0, "throttle_state": "COOL_TURBO", "throttle_delay": 1.5}
+    try:
+        bat_paths = [
+            "/sys/class/power_supply/battery/temp",
+            "/sys/class/power_supply/battery/batt_temp"
+        ]
+        for bp in bat_paths:
+            if os.path.exists(bp):
+                with open(bp, "r") as f:
+                    val = float(f.read().strip())
+                    metrics["battery_temp_c"] = val / 10.0 if val > 100 else val
+                    break
+        for tz in range(6):
+            p = f"/sys/class/thermal/thermal_zone{tz}/temp"
+            if os.path.exists(p):
+                with open(p, "r") as f:
+                    v = float(f.read().strip())
+                    c = v / 1000.0 if v > 1000 else v
+                    if c > metrics["cpu_temp_c"]:
+                        metrics["cpu_temp_c"] = c
+    except Exception:
+        pass
+    b_temp = metrics["battery_temp_c"]
+    c_temp = metrics["cpu_temp_c"]
+    if b_temp >= 41.0 or c_temp >= 72.0:
+        metrics["throttle_state"] = "HOT_THROTTLED"
+        metrics["throttle_delay"] = 12.0
+    elif b_temp >= 38.0 or c_temp >= 62.0:
+        metrics["throttle_state"] = "WARM_BALANCED"
+        metrics["throttle_delay"] = 5.0
+    else:
+        metrics["throttle_state"] = "COOL_TURBO"
+        metrics["throttle_delay"] = 1.5
+    return metrics
+
+def get_minidaemon_telemetry():
+    telemetry = {
+        "status": "active",
+        "iterations": 0,
+        "tests_passed": 0,
+        "tests_failed": 0,
+        "anomalies_resolved": 0,
+        "thermal": read_thermal_metrics(),
+        "recent_findings": []
+    }
+    if os.path.exists(MINIDAEMON_STATE):
+        try:
+            with open(MINIDAEMON_STATE, "r") as f:
+                saved = json.load(f)
+                telemetry.update(saved)
+                telemetry["thermal"] = read_thermal_metrics()
+        except Exception:
+            pass
+    return telemetry
 
 def get_symbolic_telemetry():
     if os.path.exists(SYMBOLIC_FILE):
@@ -141,18 +198,22 @@ def get_hex_dump(plat_key, offset=0, length=256):
     except Exception as e:
         return {"error": str(e), "lines": []}
 
-def handle_chat_query(user_message, model_choice="local"):
+def handle_chat_query(user_message, model_choice="local", privacy_mode=False):
     t0 = time.time()
     sys.path.insert(0, TOOLS_DIR)
     try:
         import parasite_llm_router
-        tier = 0 if model_choice == "local" else 1
+        tier = 0 if (model_choice == "local" or privacy_mode) else 1
         prompt = f"Eres el cerebro cibernético mad-scientist del MegaDaemon de Snatcher en ScummVM. Responde en Spanglish divertido y ultra-técnico (mencionando HuC6280, Z80, M68K, SH-2, MIPS, VRAM, SHM): {user_message}"
-        response_text = parasite_llm_router.query_parasite_router(prompt, preferred_tier=tier)
+        response_text = parasite_llm_router.query_parasite_router(
+            prompt,
+            preferred_tier=tier,
+            privacy_mode=privacy_mode
+        )
     except Exception as e:
         response_text = f"¡Rayos y centellas! Falló el córtex neuronal: {e}"
     latency = round((time.time() - t0) * 1000, 2)
-    return {"reply": response_text, "model": model_choice, "latency_ms": latency}
+    return {"reply": response_text, "model": "local-privacy" if privacy_mode else model_choice, "latency_ms": latency}
 
 def execute_root_boost():
     try:
@@ -302,7 +363,8 @@ HTML_PAGE = """<!DOCTYPE html>
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg-base); color: var(--text-main); font-family: var(--font-stack); display: flex; height: 100vh; overflow: hidden; }
+        body { background: var(--bg-base); color: var(--text-main); font-family: var(--font-stack); display: flex; height: 100vh; overflow: hidden; position: relative; }
+        #webgl-matrix { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0; opacity: 0.28; transition: opacity 0.3s; }
 
         /* Leftmost Rail */
         .server-rail { width: 64px; background: var(--bg-rail); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 8px; flex-shrink: 0; border-right: 1px solid var(--border); z-index: 20; }
@@ -327,7 +389,7 @@ HTML_PAGE = """<!DOCTYPE html>
         .engine-desc { font-size: 0.68rem; color: var(--text-muted); }
 
         /* Main Cockpit Panel */
-        .cockpit-main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-base); position: relative; }
+        .cockpit-main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: transparent; position: relative; z-index: 5; }
         .cockpit-header { height: 50px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: var(--bg-sidebar); gap: 10px; }
         .header-title-box { display: flex; align-items: center; gap: 8px; }
         .hamburger-btn { display: none; background: transparent; border: 1px solid var(--border); color: var(--text-header); font-size: 1.2rem; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
@@ -399,6 +461,7 @@ HTML_PAGE = """<!DOCTYPE html>
     </style>
 </head>
 <body>
+    <canvas id="webgl-matrix"></canvas>
     <!-- 1. LEFT PLATFORM RAIL -->
     <div class="server-rail">
         <div class="server-icon active" title="MegaDaemon Core" onclick="switchPlatform('snat')">SNAT</div>
@@ -432,6 +495,9 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="channel-category">⚡ MANDO MEGADAEMON</div>
             <div class="channel-item" onclick="switchChannel('control-center')">
                 <span>🚀</span><span>central-de-mando</span>
+            </div>
+            <div class="channel-item" onclick="switchChannel('minidaemon-thermal')">
+                <span>🌡️</span><span>minidaemon-thermal</span>
             </div>
             <div class="channel-item" onclick="switchChannel('weaponized-gdb')">
                 <span>⚔️</span><span>gdb-diferencial</span>
@@ -469,12 +535,14 @@ HTML_PAGE = """<!DOCTYPE html>
                 <span class="header-title" id="current-channel-title"># live-stream-60fps</span>
             </div>
             <div class="header-actions">
+                <button class="pill-btn" id="btnToggleGpuRain" onclick="toggleGpuRain()" title="Activar/Desactivar lluvia GPU WebGL">🌧️ GPU Rain: ON</button>
                 <select class="theme-select" id="themePicker" onchange="changeTheme(this.value)">
                     <option value="matrix">🟢 Matrix Phosphor</option>
                     <option value="discord">🟣 Discord Obsidian</option>
                     <option value="amber">🟡 Amber 1982</option>
                 </select>
                 <span class="badge accent" id="badge-root">ROOT: UID 0</span>
+                <span class="badge accent" id="badge-thermal">THERMAL: COOL 32.0°C</span>
                 <span class="badge" id="badge-shm">SHM: 289µs</span>
                 <span class="badge accent" id="badge-build">BUILD: 100% PASS</span>
             </div>
@@ -627,12 +695,18 @@ HTML_PAGE = """<!DOCTYPE html>
             <!-- PANEL 8: CORTEX CHAT (LOCAL VS SAAS LLM) -->
             <div class="view-panel" id="panel-cortex-chat">
                 <div class="chat-container">
-                    <div style="padding:10px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                    <div style="padding:10px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                         <span style="font-weight:bold; color:var(--text-header); font-size:0.85rem;">💬 CORTEX CHAT NEURONAL</span>
-                        <select class="theme-select" id="modelSelect">
-                            <option value="local">🟢 Qwen 2.5 Coder 0.5B (Local / 100% Offline / Privado)</option>
-                            <option value="cloud">🌐 Pollinations.ai (Free Cloud Parásito)</option>
-                        </select>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--accent); cursor:pointer;">
+                                <input type="checkbox" id="privacyLockToggle" onchange="togglePrivacyLock(this.checked)">
+                                <span>🔒 100% Local (Cero Fugas)</span>
+                            </label>
+                            <select class="theme-select" id="modelSelect">
+                                <option value="local">🟢 Qwen 2.5 Coder 0.5B (Local / Offline)</option>
+                                <option value="cloud">🌐 Pollinations.ai (Free Cloud Parásito)</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="chat-feed" id="chatFeed">
                         <div class="chat-row">
@@ -650,7 +724,41 @@ HTML_PAGE = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- PANEL 9: HEX INSPECTOR & DISASSEMBLER -->
+            <!-- PANEL 9: MINIDAEMON THERMAL & AUTONOMOUS MICRO-TESTING -->
+            <div class="view-panel" id="panel-minidaemon-thermal">
+                <div style="font-weight:bold; color:var(--text-header); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <span>🌡️ MINIDAEMON AUTÓNOMO: MONITOR TÉRMICO & MICRO-TESTING PERPETUO</span>
+                    <button class="pill-btn" onclick="triggerAction('minidaemon')">⚡ Correr Micro-Test Ahora</button>
+                </div>
+                <div class="control-grid">
+                    <div class="action-card">
+                        <div class="action-card-title">🔋 Estado Térmico Batería</div>
+                        <div style="font-size:1.6rem; font-weight:900; color:var(--accent);" id="md-bat-temp">32.0 °C</div>
+                        <div class="action-card-desc" id="md-bat-desc">Sensor /sys/class/power_supply/battery/temp</div>
+                    </div>
+                    <div class="action-card">
+                        <div class="action-card-title">🔥 Temperatura CPU (Max Zone)</div>
+                        <div style="font-size:1.6rem; font-weight:900; color:var(--text-header);" id="md-cpu-temp">35.0 °C</div>
+                        <div class="action-card-desc" id="md-cpu-desc">Samsung Exynos 2100 (ARMv8.2 Cortex-X1/A78/A55)</div>
+                    </div>
+                    <div class="action-card">
+                        <div class="action-card-title">⚙️ Perfil de Auto-Ajuste</div>
+                        <div style="font-size:1.3rem; font-weight:bold; color:var(--accent);" id="md-throttle-state">COOL_TURBO</div>
+                        <div class="action-card-desc" id="md-throttle-desc">Delay entre micro-tests: 1.5s (Máximo paralelismo)</div>
+                    </div>
+                    <div class="action-card">
+                        <div class="action-card-title">🔄 Micro-Tests Ejecutados</div>
+                        <div style="font-size:1.6rem; font-weight:900; color:var(--accent);" id="md-iterations">0</div>
+                        <div class="action-card-desc" id="md-tests-desc">0 pasados | 0 fallos | 0 resueltos</div>
+                    </div>
+                </div>
+                <div class="action-card">
+                    <div class="action-card-title">🧠 Diagnósticos & Mejoras del LLM Local (127.0.0.1:8080)</div>
+                    <pre class="hex-box" id="md-findings-box" style="white-space:pre-wrap;">// Esperando telemetría del MiniDaemon...</pre>
+                </div>
+            </div>
+
+            <!-- PANEL 10: HEX INSPECTOR & DISASSEMBLER -->
             <div class="view-panel" id="panel-hex-viewer">
                 <div style="font-weight:bold; color:var(--text-header);">🔬 INSPECTOR HEXADECIMAL & DESENSAMBLADOR MULTI-ARQUITECTURA</div>
                 <div class="hex-nav">
@@ -676,6 +784,140 @@ HTML_PAGE = """<!DOCTYPE html>
         let frameCount = 0;
         let lastFrameTs = performance.now();
 
+        // =====================================================================
+        // 0. WEBGL 2.0 / 1.0 GPU MATRIX RAIN SHADER
+        // =====================================================================
+        let glRainActive = true;
+        let glAnimFrame = null;
+        const matrixCanvas = document.getElementById('webgl-matrix');
+        const gl = matrixCanvas ? (matrixCanvas.getContext('webgl') || matrixCanvas.getContext('experimental-webgl')) : null;
+
+        const vsSource = `
+            attribute vec2 a_pos;
+            void main() {
+                gl_Position = vec4(a_pos, 0.0, 1.0);
+            }
+        `;
+
+        const fsSource = `
+            precision mediump float;
+            uniform vec2 u_res;
+            uniform float u_time;
+            uniform vec3 u_color;
+
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
+            void main() {
+                vec2 st = gl_FragCoord.xy / u_res;
+                float cols = 65.0;
+                float col_id = floor(st.x * cols);
+                float col_x = fract(st.x * cols);
+
+                float speed = 0.4 + hash(vec2(col_id, 3.14)) * 1.3;
+                float seed = hash(vec2(col_id, 9.81)) * 100.0;
+                
+                float y_pos = st.y + (u_time * speed * 0.18) + seed;
+                float row_id = floor(y_pos * 36.0);
+                float row_y = fract(y_pos * 36.0);
+
+                float char_rand = hash(vec2(col_id, row_id));
+                float trail = fract(y_pos * 0.85);
+                float brightness = pow(trail, 5.0) * 1.8 + (1.0 - trail) * 0.12;
+
+                float mask = step(0.12, col_x) * step(col_x, 0.88) * step(0.12, row_y) * step(row_y, 0.88);
+                if (char_rand < 0.22) mask = 0.0;
+
+                vec3 col = u_color * (brightness * mask);
+                if (trail > 0.94 && mask > 0.5) {
+                    col = mix(col, vec3(1.0, 1.0, 1.0), 0.75);
+                }
+
+                gl_FragColor = vec4(col, clamp(brightness * mask * 0.75, 0.0, 0.85));
+            }
+        `;
+
+        let rainProgram = null;
+        let uResLoc, uTimeLoc, uColorLoc;
+
+        if (gl) {
+            function createShader(gl, type, source) {
+                const s = gl.createShader(type);
+                gl.shaderSource(s, source);
+                gl.compileShader(s);
+                return s;
+            }
+            const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+            rainProgram = gl.createProgram();
+            gl.attachShader(rainProgram, vs);
+            gl.attachShader(rainProgram, fs);
+            gl.linkProgram(rainProgram);
+
+            const posBuf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1,  1, -1, -1,  1,
+                -1,  1,  1, -1,  1,  1
+            ]), gl.STATIC_DRAW);
+
+            const aPos = gl.getAttribLocation(rainProgram, 'a_pos');
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+            uResLoc = gl.getUniformLocation(rainProgram, 'u_res');
+            uTimeLoc = gl.getUniformLocation(rainProgram, 'u_time');
+            uColorLoc = gl.getUniformLocation(rainProgram, 'u_color');
+
+            function resizeMatrixCanvas() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                if (matrixCanvas.width !== w || matrixCanvas.height !== h) {
+                    matrixCanvas.width = w;
+                    matrixCanvas.height = h;
+                    gl.viewport(0, 0, w, h);
+                }
+            }
+            window.addEventListener('resize', resizeMatrixCanvas);
+            resizeMatrixCanvas();
+
+            function getThemeColorRgb() {
+                const th = document.documentElement.getAttribute('data-theme') || 'matrix';
+                if (th === 'amber') return [1.0, 0.69, 0.0];
+                if (th === 'discord') return [0.35, 0.40, 0.95];
+                return [0.0, 1.0, 0.4];
+            }
+
+            const startTime = performance.now();
+            function renderMatrixRain() {
+                if (!glRainActive) return;
+                resizeMatrixCanvas();
+                gl.useProgram(rainProgram);
+                gl.uniform2f(uResLoc, matrixCanvas.width, matrixCanvas.height);
+                gl.uniform1f(uTimeLoc, (performance.now() - startTime) * 0.001);
+                const rgb = getThemeColorRgb();
+                gl.uniform3f(uColorLoc, rgb[0], rgb[1], rgb[2]);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                glAnimFrame = requestAnimationFrame(renderMatrixRain);
+            }
+            glAnimFrame = requestAnimationFrame(renderMatrixRain);
+        }
+
+        function toggleGpuRain() {
+            glRainActive = !glRainActive;
+            const btn = document.getElementById('btnToggleGpuRain');
+            if (matrixCanvas) {
+                matrixCanvas.style.opacity = glRainActive ? '0.28' : '0.0';
+            }
+            if (btn) {
+                btn.innerText = glRainActive ? '🌧️ GPU Rain: ON' : '🌧️ GPU Rain: OFF';
+            }
+            if (glRainActive && gl) {
+                glAnimFrame = requestAnimationFrame(renderMatrixRain);
+            }
+        }
+
         // 1. THEME SWITCHER
         function changeTheme(themeName) {
             document.documentElement.setAttribute('data-theme', themeName);
@@ -685,12 +927,33 @@ HTML_PAGE = """<!DOCTYPE html>
         changeTheme(savedTheme);
         document.getElementById('themePicker').value = savedTheme;
 
-        // 2. MOBILE DRAWER
+        // 2. PRIVACY LOCK MODE
+        let isPrivacyLocked = localStorage.getItem('snatcher_privacy') === 'true';
+        function togglePrivacyLock(checked) {
+            isPrivacyLocked = checked;
+            localStorage.setItem('snatcher_privacy', checked ? 'true' : 'false');
+            const sel = document.getElementById('modelSelect');
+            if (sel) {
+                if (checked) {
+                    sel.value = 'local';
+                    sel.disabled = true;
+                } else {
+                    sel.disabled = false;
+                }
+            }
+        }
+        if (isPrivacyLocked) {
+            const cb = document.getElementById('privacyLockToggle');
+            if (cb) cb.checked = true;
+            togglePrivacyLock(true);
+        }
+
+        // 3. MOBILE DRAWER
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');
         }
 
-        // 3. CHANNEL NAVIGATION
+        // 4. CHANNEL NAVIGATION
         function switchChannel(channelId) {
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.view-panel').forEach(el => el.classList.remove('active'));
@@ -713,7 +976,7 @@ HTML_PAGE = """<!DOCTYPE html>
             }
         }
 
-        // 4. HAPTICS & INPUT
+        // 5. HAPTICS & INPUT
         function injectInput(btn, state) {
             if (navigator.vibrate && state === 1) navigator.vibrate(15);
             const bitMap = { 'UP': 1, 'DOWN': 2, 'LEFT': 4, 'RIGHT': 8, 'A': 16, 'B': 32, 'C': 64, 'START': 128, 'SELECT': 256 };
@@ -721,11 +984,12 @@ HTML_PAGE = """<!DOCTYPE html>
             fetch('/api/input?mask=' + mask);
         }
 
-        // 5. ACTION TRIGGERS
+        // 6. ACTION TRIGGERS
         async function triggerAction(act) {
             const endpoints = {
                 'megacycle': '/api/trigger_megacycle',
                 'boost': '/api/trigger_boost',
+                'minidaemon': '/api/trigger_minidaemon',
                 'weaponized': '/api/trigger_weaponized',
                 'symbolic': '/api/trigger_symbolic',
                 'retro_hook': '/api/trigger_retro_hook',
@@ -739,7 +1003,7 @@ HTML_PAGE = """<!DOCTYPE html>
             }
         }
 
-        // 6. CORTEX CHAT
+        // 7. CORTEX CHAT
         async function sendChatMessage() {
             const input = document.getElementById('chatMsgInput');
             const msg = input.value.trim();
@@ -750,22 +1014,22 @@ HTML_PAGE = """<!DOCTYPE html>
             feed.innerHTML += `<div class="chat-row"><div class="chat-avatar" style="background:var(--text-header);">TÚ</div><div class="chat-body"><div class="chat-author">Tú • Ahora</div><div class="chat-bubble">${msg}</div></div></div>`;
             feed.scrollTop = feed.scrollHeight;
 
-            const model = document.getElementById('modelSelect').value;
+            const model = isPrivacyLocked ? 'local' : document.getElementById('modelSelect').value;
             try {
                 const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: msg, model: model })
+                    body: JSON.stringify({ message: msg, model: model, privacy_mode: isPrivacyLocked })
                 });
                 const data = await res.json();
-                feed.innerHTML += `<div class="chat-row"><div class="chat-avatar">AI</div><div class="chat-body"><div class="chat-author">Cortex [${model.toUpperCase()}] • ${data.latency_ms}ms</div><div class="chat-bubble">${data.reply}</div></div></div>`;
+                feed.innerHTML += `<div class="chat-row"><div class="chat-avatar">AI</div><div class="chat-body"><div class="chat-author">Cortex [${data.model.toUpperCase()}] • ${data.latency_ms}ms</div><div class="chat-bubble">${data.reply}</div></div></div>`;
             } catch (e) {
                 feed.innerHTML += `<div class="chat-row"><div class="chat-avatar" style="background:var(--danger);">ERR</div><div class="chat-body"><div class="chat-bubble" style="color:var(--danger);">Error conectando al córtex.</div></div></div>`;
             }
             feed.scrollTop = feed.scrollHeight;
         }
 
-        // 7. HEX DUMP INSPECTOR
+        // 8. HEX DUMP INSPECTOR
         async function loadHexDump(offset) {
             currentHexOffset = offset;
             const plat = document.getElementById('hexPlatSelect').value;
@@ -783,7 +1047,7 @@ HTML_PAGE = """<!DOCTYPE html>
             loadHexDump(Math.max(0, currentHexOffset + delta));
         }
 
-        // 8. 60 FPS CRT STREAM
+        // 9. 60 FPS CRT STREAM
         const crtCanvas = document.getElementById('crtCanvas');
         const crtCtx = crtCanvas ? crtCanvas.getContext('2d') : null;
         function renderLiveStream() {
@@ -804,7 +1068,7 @@ HTML_PAGE = """<!DOCTYPE html>
         }
         renderLiveStream();
 
-        // 9. AUDIO EQUALIZER
+        // 10. AUDIO EQUALIZER
         const audioCanvas = document.getElementById('audioCanvas');
         const audioCtx = audioCanvas ? audioCanvas.getContext('2d') : null;
         function renderAudio() {
@@ -823,13 +1087,45 @@ HTML_PAGE = """<!DOCTYPE html>
         }
         renderAudio();
 
-        // 10. TELEMETRY POLLING
+        // 11. TELEMETRY POLLING
         async function updateAllTelemetry() {
             try {
                 // Status
                 const st = await (await fetch('/api/status')).json();
                 if (st.cycle_count) {
                     document.getElementById('footer-engine-desc').innerText = `Ciclo #${st.cycle_count} | PASS`;
+                }
+
+                // MiniDaemon & Thermal
+                const md = await (await fetch('/api/minidaemon')).json();
+                if (md.thermal) {
+                    const bTemp = md.thermal.battery_temp_c || 32.0;
+                    const cTemp = md.thermal.cpu_temp_c || 35.0;
+                    const thState = md.thermal.throttle_state || 'COOL_TURBO';
+                    const thBadge = document.getElementById('badge-thermal');
+                    if (thBadge) {
+                        thBadge.innerText = `THERMAL: ${thState.split('_')[0]} ${bTemp.toFixed(1)}°C`;
+                        thBadge.className = 'badge ' + (thState === 'HOT_THROTTLED' ? 'danger' : 'accent');
+                    }
+                    const batEl = document.getElementById('md-bat-temp');
+                    if (batEl) batEl.innerText = `${bTemp.toFixed(1)} °C`;
+                    const cpuEl = document.getElementById('md-cpu-temp');
+                    if (cpuEl) cpuEl.innerText = `${cTemp.toFixed(1)} °C`;
+                    const stEl = document.getElementById('md-throttle-state');
+                    if (stEl) {
+                        stEl.innerText = thState;
+                        stEl.style.color = thState === 'HOT_THROTTLED' ? 'var(--danger)' : 'var(--accent)';
+                    }
+                    const descEl = document.getElementById('md-throttle-desc');
+                    if (descEl) descEl.innerText = `Delay entre micro-tests: ${md.thermal.throttle_delay}s | Batería: ${bTemp.toFixed(1)}°C`;
+                    const itEl = document.getElementById('md-iterations');
+                    if (itEl) itEl.innerText = md.iterations || 0;
+                    const tDescEl = document.getElementById('md-tests-desc');
+                    if (tDescEl) tDescEl.innerText = `${md.tests_passed || 0} pasados | ${md.tests_failed || 0} fallos | ${md.anomalies_resolved || 0} resueltos`;
+                    const fBox = document.getElementById('md-findings-box');
+                    if (fBox && md.recent_findings && md.recent_findings.length > 0) {
+                        fBox.innerText = JSON.stringify(md.recent_findings, null, 2);
+                    }
                 }
 
                 // GDB
@@ -908,6 +1204,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(get_retro_hook_telemetry()).encode("utf-8"))
 
+        elif path == "/api/minidaemon":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(get_minidaemon_telemetry()).encode("utf-8"))
+
         elif path == "/api/hex_inspect":
             qs = parse_qs(parsed.query)
             plat = qs.get("platform", ["ps1"])[0]
@@ -957,13 +1259,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 body = json.loads(post_data.decode('utf-8'))
                 msg = body.get("message", "")
                 model = body.get("model", "local")
-                res = handle_chat_query(msg, model)
+                privacy_mode = body.get("privacy_mode", False)
+                res = handle_chat_query(msg, model, privacy_mode)
             except Exception as e:
                 res = {"reply": f"Error: {e}", "latency_ms": 0}
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(res).encode("utf-8"))
+
+        elif path == "/api/trigger_minidaemon":
+            subprocess.Popen([sys.executable, os.path.join(TOOLS_DIR, "snatcher_minidaemon.py"), "--once"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"launched"}')
 
         elif path == "/api/trigger_megacycle":
             subprocess.Popen([sys.executable, os.path.join(TOOLS_DIR, "snatcher_megadaemon.py"), "--once"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
