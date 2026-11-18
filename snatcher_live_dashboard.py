@@ -33,7 +33,17 @@ STATE_FILE = os.path.join(TOOLS_DIR, "megadaemon_state.json")
 VISUAL_REPORT = os.path.join(TOOLS_DIR, "visual_qa_report.json")
 VLA_TELEMETRY = os.path.join(TOOLS_DIR, "vla_telemetry.json")
 WEAPONIZED_FILE = os.path.join(TOOLS_DIR, "weaponized_telemetry.json")
+MULTIPLATFORM_FILE = os.path.join(TOOLS_DIR, "multiplatform_memory_telemetry.json")
 SHM_FILE = "/data/user/0/com.agy/files/snatcher_vla_shm.bin"
+
+def get_multiplatform_telemetry():
+    if os.path.exists(MULTIPLATFORM_FILE):
+        try:
+            with open(MULTIPLATFORM_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
 
 def get_telemetry():
     if os.path.exists(STATE_FILE):
@@ -674,6 +684,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(get_weaponized_telemetry()).encode("utf-8"))
+
+        elif path == "/api/multiplatform":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(get_multiplatform_telemetry()).encode("utf-8"))
 
         elif path == "/api/input":
             qs = parse_qs(parsed.query)
