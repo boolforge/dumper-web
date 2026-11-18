@@ -16,6 +16,7 @@ import os
 import sys
 import json
 import time
+import mmap
 import struct
 import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -105,6 +106,37 @@ def ppm_to_bmp(ppm_path):
         bmp_pixels.extend(pad)
 
     return bmp_header + dib_header + bytes(bmp_pixels)
+
+def shm_to_bmp():
+    shm_path = "/data/user/0/com.agy/files/snatcher_vla_shm.bin"
+    if not os.path.exists(shm_path):
+        return None
+    try:
+        with open(shm_path, "rb") as f:
+            mm = mmap.mmap(f.fileno(), 1048576, access=mmap.ACCESS_READ)
+            magic, ver, frames, ts, w, h, bpp, fmt = struct.unpack("<IIIQHHHH", mm[:28])
+            if magic != 0x534E4154 or w == 0 or h == 0:
+                mm.close()
+                return None
+            row_size = ((w * 3 + 3) // 4) * 4
+            image_size = row_size * h
+            file_size = 54 + image_size
+            bmp_header = struct.pack("<2sIHHI", b"BM", file_size, 0, 0, 54)
+            dib_header = struct.pack("<IIIHHIIIIII", 40, w, h, 1, 24, 0, image_size, 2835, 2835, 0, 0)
+            pad = b"\x00" * (row_size - w * 3)
+            bmp_pixels = bytearray()
+            raw_rgb = mm[32824 : 32824 + w * h * 3]
+            for y in range(h - 1, -1, -1):
+                row_offset = y * w * 3
+                for x in range(w):
+                    idx = row_offset + x * 3
+                    r, g, b = raw_rgb[idx], raw_rgb[idx+1], raw_rgb[idx+2]
+                    bmp_pixels.extend([b, g, r])
+                bmp_pixels.extend(pad)
+            mm.close()
+            return bmp_header + dib_header + bytes(bmp_pixels)
+    except Exception:
+        return None
 
 HTML_PAGE = """<!DOCTYPE html>
 <html lang="es">
@@ -494,6 +526,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(b'{"status":"launched"}')
+
+        elif path == "/api/live_frame":
+            bmp = shm_to_bmp()
+            if not bmp and os.path.exists(os.path.join(RENDERS_DIR, "live_scummvm.ppm")):
+                bmp = ppm_to_bmp(os.path.join(RENDERS_DIR, "live_scummvm.ppm"))
+            if bmp:
+                self.send_response(200)
+                self.send_header("Content-Type", "image/bmp")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+                self.wfile.write(bmp)
+            else:
+                self.send_response(404)
+                self.end_headers()
 
         elif path == "/api/video":
             vid_path = os.path.join(SNATCHER_ROOT, "snatcher_vla_playtest.gif")
