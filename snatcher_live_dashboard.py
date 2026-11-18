@@ -257,10 +257,20 @@ HTML_PAGE = """<!DOCTYPE html>
 
     <!-- VIDEO PLAYBACK SECTION -->
     <div class="section-title">📹 VÍDEO EN VIVO DEL TESTEO AUTÓNOMO ("VLA PLAYTESTING EN ACCIÓN")</div>
-    <div style="text-align: center; margin-bottom: 25px; background: #06090e; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+    <div style="text-align: center; margin-bottom: 25px; background: #06090e; padding: 18px; border-radius: 8px; border: 1px solid var(--border);">
         <img src="/api/video" alt="VLA Playtest Video" style="width: 100%; max-width: 680px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
-        <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 8px;">
-            Grabación de testeo en vivo: Detección de Voz, Reflejo de Mando Sub-Frame (14.8 ms), Adquisición de Objetivos 3x3 y Aceleración NPU/GPU
+        <div style="font-size: 0.82rem; color: var(--text-dim); margin-top: 10px;">
+            Grabación en vivo con arte original auténtico: Gillian Seed en JUNKER HQ, Diálogos con Mika Slayton, Tono DTMF y Combate Blaster 3x3
+        </div>
+        <div style="margin-top: 15px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <a href="/api/video" target="_blank" style="text-decoration: none;">
+                <button style="background: var(--cyber-orange); color: #000; font-size: 0.95rem; padding: 10px 22px; font-weight: bold; border-radius: 6px; box-shadow: 0 0 12px rgba(240, 136, 62, 0.4);">
+                    🎬 ABRIR VÍDEO DIRECTO (PANTALLA COMPLETA)
+                </button>
+            </a>
+            <button onclick="openInAndroid()" style="background: #1f6feb; color: #fff; font-size: 0.95rem; padding: 10px 20px; font-weight: bold;">
+                📱 Abrir en el Móvil (Galería Android)
+            </button>
         </div>
     </div>
 
@@ -405,6 +415,11 @@ HTML_PAGE = """<!DOCTYPE html>
             setTimeout(updateDashboard, 3000);
         }
 
+        async function openInAndroid() {
+            showToast("📱 Abriendo vídeo en el visor de Android...");
+            await fetch('/api/open_local');
+        }
+
         updateDashboard();
         setInterval(updateDashboard, 4000); // Polling cada 4 segundos
     </script>
@@ -493,6 +508,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
             else:
                 self.send_response(404)
                 self.end_headers()
+
+        elif path == "/api/open_local":
+            vid_path = os.path.join(SNATCHER_ROOT, "snatcher_vla_playtest.gif")
+            try:
+                subprocess.run(["am", "start", "-a", "android.intent.action.VIEW", "-d", f"file://{vid_path}", "-t", "image/gif"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"opened"}')
 
         else:
             self.send_response(404)
