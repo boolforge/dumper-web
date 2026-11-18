@@ -51,7 +51,7 @@ SHM_FILE = "/data/user/0/com.agy/files/snatcher_vla_shm.bin"
 PLATFORM_BINARIES = {
     "pce": {"name": "PC Engine", "path": os.path.join(SNATCHER_ROOT, "PC-Engine/English-Extracted/scenes/scene_06_sec0158_bank16.bin"), "arch": "HuC6280 @ 7.16MHz"},
     "msx2": {"name": "MSX2", "path": os.path.join(SNATCHER_ROOT, "MSX2/Extracted-Files/Disk0/SNATCHER.COM"), "arch": "Zilog Z80 @ 3.58MHz"},
-    "pc88": {"name": "PC-8801", "path": os.path.join(SNATCHER_ROOT, "PC-8801/Disks-Linear/Disk1-Program_linear.img"), "arch": "Z80 + uPD7220 GDC"},
+    "pc88": {"name": "PC-8801", "path": os.path.join(SNATCHER_ROOT, "PC88/Disks/Snatcher (1988)(Konami)(Disk 1 of 5)(Program Disk).d88"), "arch": "Z80 + uPD7220 GDC"},
     "segacd": {"name": "Sega CD", "path": os.path.join(SNATCHER_ROOT, "SegaCD/Original-USA/SUBCODE.BIN"), "arch": "Motorola 68000 Sub-CPU"},
     "saturn": {"name": "Sega Saturn", "path": os.path.join(SNATCHER_ROOT, "Sega-Saturn/Original-Japan/MAIN_L.BIN"), "arch": "Dual Hitachi SH-2"},
     "ps1": {"name": "PlayStation 1", "path": os.path.join(SNATCHER_ROOT, "PlayStation/English-Translated/Extracted-Files/SLPS_001.54"), "arch": "MIPS R3000A"}
