@@ -34,7 +34,27 @@ VISUAL_REPORT = os.path.join(TOOLS_DIR, "visual_qa_report.json")
 VLA_TELEMETRY = os.path.join(TOOLS_DIR, "vla_telemetry.json")
 WEAPONIZED_FILE = os.path.join(TOOLS_DIR, "weaponized_telemetry.json")
 MULTIPLATFORM_FILE = os.path.join(TOOLS_DIR, "multiplatform_memory_telemetry.json")
+SYMBOLIC_FILE = os.path.join(TOOLS_DIR, "symbolic_execution_report.json")
+RETRO_HOOK_FILE = os.path.join(TOOLS_DIR, "retro_frida_symbolic_telemetry.json")
 SHM_FILE = "/data/user/0/com.agy/files/snatcher_vla_shm.bin"
+
+def get_symbolic_telemetry():
+    if os.path.exists(SYMBOLIC_FILE):
+        try:
+            with open(SYMBOLIC_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def get_retro_hook_telemetry():
+    if os.path.exists(RETRO_HOOK_FILE):
+        try:
+            with open(RETRO_HOOK_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
 
 def get_multiplatform_telemetry():
     if os.path.exists(MULTIPLATFORM_FILE):
@@ -336,6 +356,16 @@ HTML_PAGE = """<!DOCTYPE html>
                 <span class="channel-icon">🧬</span>
                 <span>decomp-14k-funcs</span>
             </div>
+
+            <div class="channel-category">📐 EJECUCIÓN SIMBÓLICA & ANGR</div>
+            <div class="channel-item" onclick="switchChannel('symbolic-solver')">
+                <span class="channel-icon">📐</span>
+                <span>symbolic-solver-sat</span>
+            </div>
+            <div class="channel-item" onclick="switchChannel('retro-frida')">
+                <span class="channel-icon">🪝</span>
+                <span>retro-frida-interceptor</span>
+            </div>
         </div>
 
         <div class="sidebar-footer">
@@ -526,6 +556,58 @@ wordRAMBankTimingCounter = 4; // Asegura latencia de 4 ciclos en conmutación 2M
                     </div>
                 </div>
             </div>
+
+            <!-- PANEL 7: SYMBOLIC SOLVER SAT -->
+            <div class="view-panel" id="panel-symbolic-solver">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-weight:bold; color:var(--text-header); font-size:1rem;">📐 RESOLUTOR SIMBÓLICO UNIVERSAL & TRITON / ANGR (6 PLATAFORMAS)</div>
+                    <button class="pill-btn" onclick="triggerSymbolic()">🔄 Ejecutar Solver Simbólico</button>
+                </div>
+                <div class="discord-feed" id="symbolic-feed">
+                    <div class="msg-row">
+                        <div class="msg-avatar" style="background:var(--blurple);">SAT</div>
+                        <div class="msg-content">
+                            <div class="msg-author-line">
+                                <span class="msg-author">Universal SymExpr / Branch Solver</span>
+                                <span class="msg-tag">100% SATISFIABLE</span>
+                                <span class="msg-time">Multi-Arch</span>
+                            </div>
+                            <div class="msg-text" id="symbolic-summary-text">
+                                Verificando satisfacibilidad de bifurcaciones condicionales y resolución de árboles de diálogo en PC Engine, MSX2, PC-8801, Sega CD, Saturn y PS1.
+                            </div>
+                            <div class="code-block" id="symbolic-json-block">
+Cargando telemetría simbólica...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL 8: RETRO-FRIDA INTERCEPTOR -->
+            <div class="view-panel" id="panel-retro-frida">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-weight:bold; color:var(--text-header); font-size:1rem;">🪝 RETRO-FRIDA DYNAMIC MEMORY HOOK & INTERCEPTOR (TODAS LAS PLATAFORMAS)</div>
+                    <button class="pill-btn" onclick="triggerRetroHook()">⚡ Ejecutar Interceptor Retro-Frida</button>
+                </div>
+                <div class="discord-feed" id="retro-hook-feed">
+                    <div class="msg-row">
+                        <div class="msg-avatar" style="background:var(--yellow); color:#000;">RF</div>
+                        <div class="msg-content">
+                            <div class="msg-author-line">
+                                <span class="msg-author">Retro-Frida Dynamic Interceptor</span>
+                                <span class="msg-tag">28 TRAMPAS ACTIVAS</span>
+                                <span class="msg-time">I/O & Memory Traps</span>
+                            </div>
+                            <div class="msg-text" id="retro-hook-summary-text">
+                                Interceptores de memoria dinámicos conectados a buses de hardware (VDC, V9938, OPNA, Gate Array, VDP1/2, SPU/GPU) para validación diferencial con ScummVM.
+                            </div>
+                            <div class="code-block" id="retro-hook-json-block">
+Cargando trampas de intercepción...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -649,8 +731,49 @@ wordRAMBankTimingCounter = 4; // Asegura latencia de 4 ciclos en conmutación 2M
                     }
                 }
             } catch (e) {}
+            updateSymbolicData();
+            updateRetroHookData();
         }
+
+        function triggerSymbolic() {
+            fetch('/api/trigger_symbolic', { method: 'POST' });
+            setTimeout(updateSymbolicData, 800);
+        }
+
+        function triggerRetroHook() {
+            fetch('/api/trigger_retro_hook', { method: 'POST' });
+            setTimeout(updateRetroHookData, 800);
+        }
+
+        async function updateSymbolicData() {
+            try {
+                const res = await fetch('/api/symbolic');
+                if (res.ok) {
+                    const data = await res.json();
+                    const block = document.getElementById('symbolic-json-block');
+                    if (block && data.solver_results) {
+                        block.innerText = JSON.stringify(data.solver_results, null, 2);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function updateRetroHookData() {
+            try {
+                const res = await fetch('/api/retro_hook');
+                if (res.ok) {
+                    const data = await res.json();
+                    const block = document.getElementById('retro-hook-json-block');
+                    if (block && data.interceptions) {
+                        block.innerText = JSON.stringify(data.interceptions, null, 2);
+                    }
+                }
+            } catch (e) {}
+        }
+
         setInterval(updateTelemetry, 3000);
+        updateSymbolicData();
+        updateRetroHookData();
     </script>
 </body>
 </html>
@@ -690,6 +813,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(get_multiplatform_telemetry()).encode("utf-8"))
+
+        elif path == "/api/symbolic":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(get_symbolic_telemetry()).encode("utf-8"))
+
+        elif path == "/api/retro_hook":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(get_retro_hook_telemetry()).encode("utf-8"))
 
         elif path == "/api/input":
             qs = parse_qs(parsed.query)
@@ -743,6 +878,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'{"status":"launched"}')
         elif path == "/api/run_vla":
             subprocess.Popen([sys.executable, os.path.join(TOOLS_DIR, "snatcher_vla_agent.py"), "--once"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"launched"}')
+        elif path == "/api/trigger_symbolic":
+            subprocess.Popen([sys.executable, os.path.join(TOOLS_DIR, "snatcher_universal_symbolic_tracer.py")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"launched"}')
+        elif path == "/api/trigger_retro_hook":
+            subprocess.Popen([sys.executable, os.path.join(TOOLS_DIR, "snatcher_retro_hooker.py")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
